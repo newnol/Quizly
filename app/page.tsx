@@ -1,6 +1,8 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
+import { createClient } from "@/lib/supabase/client"
+import type { User } from "@supabase/supabase-js"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { StatsCard } from "@/components/stats-card"
@@ -9,20 +11,79 @@ import { QuizMode } from "@/components/quiz-mode"
 import { FlashcardMode } from "@/components/flashcard-mode"
 import { SearchQuestions } from "@/components/search-questions"
 import { Settings } from "@/components/settings"
-import { type UserProgress, loadProgress, getDueCards } from "@/lib/storage"
+import { AuthForm } from "@/components/auth-form"
+import { UserMenu } from "@/components/user-menu"
+import { type UserProgress, loadProgress, saveProgress, getDueCards, syncLocalToSupabase } from "@/lib/storage"
 import { questions } from "@/lib/questions"
 import { BookOpen, Layers, Search, SettingsIcon, Brain, Zap, GraduationCap } from "lucide-react"
 
-type View = "home" | "quiz" | "flashcard" | "search" | "settings"
+type View = "home" | "quiz" | "flashcard" | "search" | "settings" | "auth"
 
 export default function Home() {
+  const [user, setUser] = useState<User | null>(null)
   const [progress, setProgress] = useState<UserProgress | null>(null)
   const [currentView, setCurrentView] = useState<View>("home")
+  const [loading, setLoading] = useState(true)
+
+  const supabase = createClient()
 
   useEffect(() => {
-    const loaded = loadProgress()
-    setProgress(loaded)
-  }, [])
+    const initializeApp = async () => {
+      // Get current session
+      const {
+        data: { session },
+      } = await supabase.auth.getSession()
+      const currentUser = session?.user ?? null
+      setUser(currentUser)
+
+      // Load progress based on auth state
+      const loadedProgress = await loadProgress(currentUser)
+      setProgress(loadedProgress)
+      setLoading(false)
+    }
+
+    initializeApp()
+
+    // Listen for auth changes
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange(async (event, session) => {
+      const currentUser = session?.user ?? null
+      setUser(currentUser)
+
+      if (event === "SIGNED_IN" && currentUser) {
+        // Sync local progress to Supabase on sign in
+        const syncedProgress = await syncLocalToSupabase(currentUser.id)
+        setProgress(syncedProgress)
+      } else if (event === "SIGNED_OUT") {
+        // Load local progress on sign out
+        const localProgress = await loadProgress(null)
+        setProgress(localProgress)
+      }
+    })
+
+    return () => subscription.unsubscribe()
+  }, [supabase.auth])
+
+  const handleSetProgress = useCallback(
+    async (newProgress: UserProgress) => {
+      setProgress(newProgress)
+      await saveProgress(user, newProgress)
+    },
+    [user],
+  )
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-pulse text-muted-foreground">Đang tải...</div>
+      </div>
+    )
+  }
+
+  if (currentView === "auth") {
+    return <AuthForm onBack={() => setCurrentView("home")} onSuccess={() => setCurrentView("home")} />
+  }
 
   if (!progress) {
     return (
@@ -40,7 +101,7 @@ export default function Home() {
   if (currentView === "quiz") {
     return (
       <main className="container max-w-4xl mx-auto p-4 py-8">
-        <QuizMode progress={progress} setProgress={setProgress} onBack={() => setCurrentView("home")} />
+        <QuizMode progress={progress} setProgress={handleSetProgress} onBack={() => setCurrentView("home")} />
       </main>
     )
   }
@@ -48,7 +109,7 @@ export default function Home() {
   if (currentView === "flashcard") {
     return (
       <main className="container max-w-4xl mx-auto p-4 py-8">
-        <FlashcardMode progress={progress} setProgress={setProgress} onBack={() => setCurrentView("home")} />
+        <FlashcardMode progress={progress} setProgress={handleSetProgress} onBack={() => setCurrentView("home")} />
       </main>
     )
   }
@@ -64,21 +125,29 @@ export default function Home() {
   if (currentView === "settings") {
     return (
       <main className="container max-w-4xl mx-auto p-4 py-8">
-        <Settings progress={progress} setProgress={setProgress} onBack={() => setCurrentView("home")} />
+        <Settings
+          progress={progress}
+          setProgress={handleSetProgress}
+          onBack={() => setCurrentView("home")}
+          user={user}
+        />
       </main>
     )
   }
 
   return (
     <main className="container max-w-4xl mx-auto p-4 py-8 space-y-8">
-      {/* Header */}
-      <div className="text-center space-y-2">
-        <div className="flex items-center justify-center gap-2">
+      {/* Header with User Menu */}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
           <GraduationCap className="h-8 w-8 text-primary" />
-          <h1 className="text-3xl font-bold">Mạng Máy Tính</h1>
+          <h1 className="text-2xl sm:text-3xl font-bold">Mạng Máy Tính</h1>
         </div>
-        <p className="text-muted-foreground">Ôn tập hiệu quả với Spaced Repetition</p>
+        <UserMenu user={user} onLogin={() => setCurrentView("auth")} onLogout={() => {}} />
       </div>
+
+      {/* Subtitle */}
+      <p className="text-muted-foreground text-center -mt-4">Ôn tập hiệu quả với Spaced Repetition</p>
 
       {/* Stats */}
       <StatsCard progress={progress} />

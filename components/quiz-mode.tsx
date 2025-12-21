@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from "react"
 import { Button } from "@/components/ui/button"
 import { QuizCard } from "./quiz-card"
 import { questions, topics, type Question } from "@/lib/questions"
-import { type UserProgress, saveProgress, updateStreak, type StudySession } from "@/lib/storage"
+import { type UserProgress, updateStreak, type StudySession } from "@/lib/storage"
 import { calculateNextReview, qualityFromAnswer } from "@/lib/spaced-repetition"
 import { ArrowLeft, ArrowRight, Shuffle, Clock, RotateCcw } from "lucide-react"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
@@ -125,7 +125,6 @@ export function QuizMode({ progress, setProgress, onBack }: QuizModeProps) {
     })
 
     setProgress(updatedProgress)
-    saveProgress(updatedProgress)
 
     setSessionStats((prev) => ({
       correct: prev.correct + (isCorrect ? 1 : 0),
@@ -151,7 +150,6 @@ export function QuizMode({ progress, setProgress, onBack }: QuizModeProps) {
         studySessions: [...progress.studySessions, session],
       }
       setProgress(updatedProgress)
-      saveProgress(updatedProgress)
     }
   }
 
@@ -172,7 +170,6 @@ export function QuizMode({ progress, setProgress, onBack }: QuizModeProps) {
         : [...progress.bookmarkedQuestions, currentQuestion.id],
     }
     setProgress(updatedProgress)
-    saveProgress(updatedProgress)
   }
 
   const saveNote = (note: string) => {
@@ -184,7 +181,6 @@ export function QuizMode({ progress, setProgress, onBack }: QuizModeProps) {
       },
     }
     setProgress(updatedProgress)
-    saveProgress(updatedProgress)
   }
 
   const startQuiz = () => {

@@ -1,4 +1,6 @@
 import { type CardProgress, getInitialProgress } from "./spaced-repetition"
+import { createClient } from "./supabase/client"
+import type { User } from "@supabase/supabase-js"
 
 export interface StudySession {
   date: Date
@@ -14,7 +16,7 @@ export interface UserProgress {
   studySessions: StudySession[]
   streak: number
   lastStudyDate: string | null
-  wrongAnswers: string[] // IDs of questions answered incorrectly
+  wrongAnswers: string[]
 }
 
 const STORAGE_KEY = "quiz-app-progress"
@@ -31,7 +33,7 @@ export function getDefaultProgress(): UserProgress {
   }
 }
 
-export function loadProgress(): UserProgress {
+export function loadProgressFromLocal(): UserProgress {
   if (typeof window === "undefined") return getDefaultProgress()
 
   try {
@@ -39,30 +41,107 @@ export function loadProgress(): UserProgress {
     if (!saved) return getDefaultProgress()
 
     const parsed = JSON.parse(saved)
-    // Convert date strings back to Date objects
-    if (parsed.cardProgress) {
-      Object.values(parsed.cardProgress).forEach((cp: unknown) => {
-        const card = cp as CardProgress
-        card.nextReviewDate = new Date(card.nextReviewDate)
-        if (card.lastReviewDate) {
-          card.lastReviewDate = new Date(card.lastReviewDate)
-        }
-      })
-    }
-    if (parsed.studySessions) {
-      parsed.studySessions.forEach((s: StudySession) => {
-        s.date = new Date(s.date)
-      })
-    }
-    return { ...getDefaultProgress(), ...parsed }
+    return parseProgress(parsed)
   } catch {
     return getDefaultProgress()
   }
 }
 
-export function saveProgress(progress: UserProgress): void {
+function parseProgress(parsed: Record<string, unknown>): UserProgress {
+  if (parsed.cardProgress) {
+    Object.values(parsed.cardProgress).forEach((cp: unknown) => {
+      const card = cp as CardProgress
+      card.nextReviewDate = new Date(card.nextReviewDate)
+      if (card.lastReviewDate) {
+        card.lastReviewDate = new Date(card.lastReviewDate)
+      }
+    })
+  }
+  if (parsed.studySessions && Array.isArray(parsed.studySessions)) {
+    parsed.studySessions.forEach((s: StudySession) => {
+      s.date = new Date(s.date)
+    })
+  }
+  return { ...getDefaultProgress(), ...parsed } as UserProgress
+}
+
+export async function loadProgressFromSupabase(userId: string): Promise<UserProgress> {
+  const supabase = createClient()
+
+  const { data, error } = await supabase.from("user_progress").select("*").eq("user_id", userId).single()
+
+  if (error || !data) {
+    return getDefaultProgress()
+  }
+
+  return parseProgress({
+    cardProgress: data.card_progress || {},
+    bookmarkedQuestions: data.bookmarked_questions || [],
+    notes: data.notes || {},
+    studySessions: data.study_sessions || [],
+    streak: data.streak || 0,
+    lastStudyDate: data.last_study_date,
+    wrongAnswers: data.wrong_answers || [],
+  })
+}
+
+export function saveProgressToLocal(progress: UserProgress): void {
   if (typeof window === "undefined") return
   localStorage.setItem(STORAGE_KEY, JSON.stringify(progress))
+}
+
+export async function saveProgressToSupabase(userId: string, progress: UserProgress): Promise<void> {
+  const supabase = createClient()
+
+  const { error } = await supabase.from("user_progress").upsert(
+    {
+      user_id: userId,
+      card_progress: progress.cardProgress,
+      bookmarked_questions: progress.bookmarkedQuestions,
+      notes: progress.notes,
+      study_sessions: progress.studySessions,
+      streak: progress.streak,
+      last_study_date: progress.lastStudyDate,
+      wrong_answers: progress.wrongAnswers,
+    },
+    { onConflict: "user_id" },
+  )
+
+  if (error) {
+    console.error("Error saving progress to Supabase:", error)
+  }
+}
+
+export async function loadProgress(user: User | null): Promise<UserProgress> {
+  if (user) {
+    return loadProgressFromSupabase(user.id)
+  }
+  return loadProgressFromLocal()
+}
+
+export async function saveProgress(user: User | null, progress: UserProgress): Promise<void> {
+  if (user) {
+    await saveProgressToSupabase(user.id, progress)
+  } else {
+    saveProgressToLocal(progress)
+  }
+}
+
+export async function syncLocalToSupabase(userId: string): Promise<UserProgress> {
+  const localProgress = loadProgressFromLocal()
+  const supabaseProgress = await loadProgressFromSupabase(userId)
+
+  // Merge progress - prefer the one with more data
+  const localCount = Object.keys(localProgress.cardProgress).length
+  const supabaseCount = Object.keys(supabaseProgress.cardProgress).length
+
+  if (localCount > supabaseCount) {
+    // Local has more progress, save it to Supabase
+    await saveProgressToSupabase(userId, localProgress)
+    return localProgress
+  }
+
+  return supabaseProgress
 }
 
 export function getCardProgress(progress: UserProgress, questionId: string): CardProgress {
@@ -73,7 +152,7 @@ export function getDueCards(progress: UserProgress, questionIds: string[]): stri
   const now = new Date()
   return questionIds.filter((id) => {
     const card = progress.cardProgress[id]
-    if (!card) return true // New cards are always due
+    if (!card) return true
     return new Date(card.nextReviewDate) <= now
   })
 }

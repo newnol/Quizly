@@ -1,21 +1,23 @@
 "use client"
 
 import type React from "react"
+import type { User } from "@supabase/supabase-js"
 
 import { useState, useRef } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { type UserProgress, exportData, importData, saveProgress, getDefaultProgress } from "@/lib/storage"
-import { ArrowLeft, Download, Upload, Trash2, AlertTriangle } from "lucide-react"
+import { ArrowLeft, Download, Upload, Trash2, AlertTriangle, Cloud, CloudOff } from "lucide-react"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 
 interface SettingsProps {
   progress: UserProgress
   setProgress: (progress: UserProgress) => void
   onBack: () => void
+  user: User | null // Added user prop
 }
 
-export function Settings({ progress, setProgress, onBack }: SettingsProps) {
+export function Settings({ progress, setProgress, onBack, user }: SettingsProps) {
   const [showResetConfirm, setShowResetConfirm] = useState(false)
   const [importError, setImportError] = useState<string | null>(null)
   const [importSuccess, setImportSuccess] = useState(false)
@@ -39,13 +41,13 @@ export function Settings({ progress, setProgress, onBack }: SettingsProps) {
     if (!file) return
 
     const reader = new FileReader()
-    reader.onload = (event) => {
+    reader.onload = async (event) => {
       try {
         const content = event.target?.result as string
         const imported = importData(content)
         if (imported) {
           setProgress(imported)
-          saveProgress(imported)
+          await saveProgress(user, imported)
           setImportSuccess(true)
           setImportError(null)
           setTimeout(() => setImportSuccess(false), 3000)
@@ -58,16 +60,15 @@ export function Settings({ progress, setProgress, onBack }: SettingsProps) {
     }
     reader.readAsText(file)
 
-    // Reset input
     if (fileInputRef.current) {
       fileInputRef.current.value = ""
     }
   }
 
-  const handleReset = () => {
+  const handleReset = async () => {
     const defaultProgress = getDefaultProgress()
     setProgress(defaultProgress)
-    saveProgress(defaultProgress)
+    await saveProgress(user, defaultProgress)
     setShowResetConfirm(false)
   }
 
@@ -79,6 +80,36 @@ export function Settings({ progress, setProgress, onBack }: SettingsProps) {
       </Button>
 
       <h2 className="text-2xl font-bold">Cài đặt</h2>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            {user ? (
+              <Cloud className="h-5 w-5 text-green-500" />
+            ) : (
+              <CloudOff className="h-5 w-5 text-muted-foreground" />
+            )}
+            Trạng thái tài khoản
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {user ? (
+            <div className="space-y-2">
+              <p className="text-sm">
+                <span className="text-muted-foreground">Email:</span> <span className="font-medium">{user.email}</span>
+              </p>
+              <p className="text-sm text-green-600">Dữ liệu được đồng bộ lên cloud</p>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              <p className="text-sm text-muted-foreground">Đang sử dụng chế độ Guest</p>
+              <p className="text-sm text-amber-600">
+                Dữ liệu chỉ được lưu trên thiết bị này. Đăng nhập để đồng bộ lên cloud.
+              </p>
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       <Card>
         <CardHeader>

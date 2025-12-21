@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from "react"
 import { Button } from "@/components/ui/button"
 import { Flashcard } from "./flashcard"
 import { questions, topics, type Question } from "@/lib/questions"
-import { type UserProgress, saveProgress, updateStreak, type StudySession } from "@/lib/storage"
+import { type UserProgress, updateStreak, type StudySession } from "@/lib/storage"
 import { calculateNextReview, type Quality } from "@/lib/spaced-repetition"
 import { ArrowLeft, ArrowRight, Shuffle, RotateCcw } from "lucide-react"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
@@ -81,7 +81,6 @@ export function FlashcardMode({ progress, setProgress, onBack }: FlashcardModePr
     })
 
     setProgress(updatedProgress)
-    saveProgress(updatedProgress)
     setReviewed((prev) => prev + 1)
 
     // Auto advance
@@ -101,7 +100,6 @@ export function FlashcardMode({ progress, setProgress, onBack }: FlashcardModePr
         : [...progress.bookmarkedQuestions, currentQuestion.id],
     }
     setProgress(updatedProgress)
-    saveProgress(updatedProgress)
   }
 
   const handleNext = () => {
@@ -137,7 +135,6 @@ export function FlashcardMode({ progress, setProgress, onBack }: FlashcardModePr
       studySessions: [...progress.studySessions, session],
     }
     setProgress(updatedProgress)
-    saveProgress(updatedProgress)
     onBack()
   }
 
