@@ -66,23 +66,28 @@ function parseProgress(parsed: Record<string, unknown>): UserProgress {
 }
 
 export async function loadProgressFromSupabase(userId: string): Promise<UserProgress> {
-  const supabase = createClient()
+  try {
+    const supabase = createClient()
 
-  const { data, error } = await supabase.from("user_progress").select("*").eq("user_id", userId).single()
+    const { data, error } = await supabase.from("user_progress").select("*").eq("user_id", userId).single()
 
-  if (error || !data) {
+    if (error || !data) {
+      return getDefaultProgress()
+    }
+
+    return parseProgress({
+      cardProgress: data.card_progress || {},
+      bookmarkedQuestions: data.bookmarked_questions || [],
+      notes: data.notes || {},
+      studySessions: data.study_sessions || [],
+      streak: data.streak || 0,
+      lastStudyDate: data.last_study_date,
+      wrongAnswers: data.wrong_answers || [],
+    })
+  } catch (error) {
+    console.error("Error loading from Supabase:", error)
     return getDefaultProgress()
   }
-
-  return parseProgress({
-    cardProgress: data.card_progress || {},
-    bookmarkedQuestions: data.bookmarked_questions || [],
-    notes: data.notes || {},
-    studySessions: data.study_sessions || [],
-    streak: data.streak || 0,
-    lastStudyDate: data.last_study_date,
-    wrongAnswers: data.wrong_answers || [],
-  })
 }
 
 export function saveProgressToLocal(progress: UserProgress): void {
@@ -113,10 +118,15 @@ export async function saveProgressToSupabase(userId: string, progress: UserProgr
 }
 
 export async function loadProgress(user: User | null): Promise<UserProgress> {
-  if (user) {
-    return loadProgressFromSupabase(user.id)
+  try {
+    if (user) {
+      return await loadProgressFromSupabase(user.id)
+    }
+    return loadProgressFromLocal()
+  } catch (error) {
+    console.error("Error in loadProgress:", error)
+    return getDefaultProgress()
   }
-  return loadProgressFromLocal()
 }
 
 export async function saveProgress(user: User | null, progress: UserProgress): Promise<void> {

@@ -15,19 +15,25 @@ interface FlashcardModeProps {
   progress: UserProgress
   setProgress: (progress: UserProgress) => void
   onBack: () => void
+  specificQuestionIds?: string[] | null
 }
 
 type FilterType = "all" | "bookmarked" | "due"
 
-export function FlashcardMode({ progress, setProgress, onBack }: FlashcardModeProps) {
+export function FlashcardMode({ progress, setProgress, onBack, specificQuestionIds }: FlashcardModeProps) {
   const [currentIndex, setCurrentIndex] = useState(0)
   const [shuffledQuestions, setShuffledQuestions] = useState<Question[]>([])
   const [topicFilter, setTopicFilter] = useState<string>("all")
   const [statusFilter, setStatusFilter] = useState<FilterType>("due")
-  const [isStarted, setIsStarted] = useState(false)
+  const [isStarted, setIsStarted] = useState(!!specificQuestionIds)
   const [reviewed, setReviewed] = useState(0)
 
   const filterQuestions = useCallback(() => {
+    if (specificQuestionIds && specificQuestionIds.length > 0) {
+      const specificQuestions = questions.filter((q) => specificQuestionIds.includes(q.id))
+      return specificQuestions.sort(() => Math.random() - 0.5)
+    }
+
     let filtered = [...questions]
 
     if (topicFilter !== "all") {
@@ -49,7 +55,7 @@ export function FlashcardMode({ progress, setProgress, onBack }: FlashcardModePr
     }
 
     return filtered.sort(() => Math.random() - 0.5)
-  }, [topicFilter, statusFilter, progress])
+  }, [topicFilter, statusFilter, progress, specificQuestionIds])
 
   useEffect(() => {
     if (!isStarted) return
@@ -83,7 +89,6 @@ export function FlashcardMode({ progress, setProgress, onBack }: FlashcardModePr
     setProgress(updatedProgress)
     setReviewed((prev) => prev + 1)
 
-    // Auto advance
     if (currentIndex < shuffledQuestions.length - 1) {
       setTimeout(() => {
         setCurrentIndex((prev) => prev + 1)
@@ -138,7 +143,7 @@ export function FlashcardMode({ progress, setProgress, onBack }: FlashcardModePr
     onBack()
   }
 
-  if (!isStarted) {
+  if (!isStarted && !specificQuestionIds) {
     return (
       <div className="space-y-6 max-w-2xl mx-auto">
         <Button variant="ghost" onClick={onBack} className="mb-4">

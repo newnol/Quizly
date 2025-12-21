@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import type { Question } from "@/lib/questions"
 import { cn } from "@/lib/utils"
-import { RotateCcw, Bookmark, BookmarkCheck, ThumbsUp, ThumbsDown, Meh, Smile, Frown } from "lucide-react"
+import { RotateCcw, Bookmark, BookmarkCheck } from "lucide-react"
 import type { Quality } from "@/lib/spaced-repetition"
 
 interface FlashcardProps {
@@ -17,6 +17,15 @@ interface FlashcardProps {
   questionNumber: number
   totalQuestions: number
 }
+
+const ratingOptions: { quality: Quality; label: string; color: string }[] = [
+  { quality: 0, label: "Quên hoàn toàn", color: "text-red-600 border-red-200 hover:bg-red-50" },
+  { quality: 1, label: "Sai, nhưng quen", color: "text-red-500 border-red-200 hover:bg-red-50" },
+  { quality: 2, label: "Sai, dễ nhớ", color: "text-orange-500 border-orange-200 hover:bg-orange-50" },
+  { quality: 3, label: "Đúng, khó", color: "text-yellow-600 border-yellow-200 hover:bg-yellow-50" },
+  { quality: 4, label: "Đúng, hơi ngập ngừng", color: "text-green-500 border-green-200 hover:bg-green-50" },
+  { quality: 5, label: "Nhớ hoàn hảo", color: "text-green-600 border-green-200 hover:bg-green-50" },
+]
 
 export function Flashcard({
   question,
@@ -83,27 +92,18 @@ export function Flashcard({
       {isFlipped && (
         <div className="mt-4 space-y-2">
           <p className="text-sm text-center text-muted-foreground">Bạn nhớ câu này như thế nào?</p>
-          <div className="flex justify-center gap-2 flex-wrap">
-            <Button variant="outline" size="sm" onClick={() => onRate(0)} className="flex gap-1">
-              <Frown className="h-4 w-4 text-red-500" />
-              Quên
-            </Button>
-            <Button variant="outline" size="sm" onClick={() => onRate(2)} className="flex gap-1">
-              <ThumbsDown className="h-4 w-4 text-orange-500" />
-              Khó
-            </Button>
-            <Button variant="outline" size="sm" onClick={() => onRate(3)} className="flex gap-1">
-              <Meh className="h-4 w-4 text-yellow-500" />
-              Ổn
-            </Button>
-            <Button variant="outline" size="sm" onClick={() => onRate(4)} className="flex gap-1">
-              <ThumbsUp className="h-4 w-4 text-green-500" />
-              Nhớ
-            </Button>
-            <Button variant="outline" size="sm" onClick={() => onRate(5)} className="flex gap-1">
-              <Smile className="h-4 w-4 text-green-600" />
-              Dễ
-            </Button>
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+            {ratingOptions.map(({ quality, label, color }) => (
+              <Button
+                key={quality}
+                variant="outline"
+                size="sm"
+                onClick={() => onRate(quality)}
+                className={cn("text-xs h-auto py-2", color)}
+              >
+                {label}
+              </Button>
+            ))}
           </div>
         </div>
       )}

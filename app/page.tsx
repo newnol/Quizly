@@ -13,52 +13,67 @@ import { SearchQuestions } from "@/components/search-questions"
 import { Settings } from "@/components/settings"
 import { AuthForm } from "@/components/auth-form"
 import { UserMenu } from "@/components/user-menu"
-import { type UserProgress, loadProgress, saveProgress, getDueCards, syncLocalToSupabase } from "@/lib/storage"
+import { ReviewHistory } from "@/components/review-history"
+import {
+  type UserProgress,
+  loadProgress,
+  saveProgress,
+  getDueCards,
+  syncLocalToSupabase,
+  getDefaultProgress,
+} from "@/lib/storage"
 import { questions } from "@/lib/questions"
-import { BookOpen, Layers, Search, SettingsIcon, Brain, Zap, GraduationCap } from "lucide-react"
+import { BookOpen, Layers, Search, SettingsIcon, Brain, Zap, GraduationCap, History } from "lucide-react"
 
-type View = "home" | "quiz" | "flashcard" | "search" | "settings" | "auth"
+type View = "home" | "quiz" | "flashcard" | "search" | "settings" | "auth" | "review"
 
 export default function Home() {
   const [user, setUser] = useState<User | null>(null)
-  const [progress, setProgress] = useState<UserProgress | null>(null)
+  const [progress, setProgress] = useState<UserProgress>(getDefaultProgress())
   const [currentView, setCurrentView] = useState<View>("home")
   const [loading, setLoading] = useState(true)
+  const [reviewQuestionIds, setReviewQuestionIds] = useState<string[] | null>(null)
 
   const supabase = createClient()
 
   useEffect(() => {
     const initializeApp = async () => {
-      // Get current session
-      const {
-        data: { session },
-      } = await supabase.auth.getSession()
-      const currentUser = session?.user ?? null
-      setUser(currentUser)
+      try {
+        const {
+          data: { session },
+        } = await supabase.auth.getSession()
+        const currentUser = session?.user ?? null
+        setUser(currentUser)
 
-      // Load progress based on auth state
-      const loadedProgress = await loadProgress(currentUser)
-      setProgress(loadedProgress)
-      setLoading(false)
+        const loadedProgress = await loadProgress(currentUser)
+        setProgress(loadedProgress || getDefaultProgress())
+      } catch (error) {
+        console.error("Error loading progress:", error)
+        setProgress(getDefaultProgress())
+      } finally {
+        setLoading(false)
+      }
     }
 
     initializeApp()
 
-    // Listen for auth changes
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange(async (event, session) => {
       const currentUser = session?.user ?? null
       setUser(currentUser)
 
-      if (event === "SIGNED_IN" && currentUser) {
-        // Sync local progress to Supabase on sign in
-        const syncedProgress = await syncLocalToSupabase(currentUser.id)
-        setProgress(syncedProgress)
-      } else if (event === "SIGNED_OUT") {
-        // Load local progress on sign out
-        const localProgress = await loadProgress(null)
-        setProgress(localProgress)
+      try {
+        if (event === "SIGNED_IN" && currentUser) {
+          const syncedProgress = await syncLocalToSupabase(currentUser.id)
+          setProgress(syncedProgress || getDefaultProgress())
+        } else if (event === "SIGNED_OUT") {
+          const localProgress = await loadProgress(null)
+          setProgress(localProgress || getDefaultProgress())
+        }
+      } catch (error) {
+        console.error("Error handling auth change:", error)
+        setProgress(getDefaultProgress())
       }
     })
 
@@ -72,6 +87,11 @@ export default function Home() {
     },
     [user],
   )
+
+  const handleReviewCards = (questionIds: string[]) => {
+    setReviewQuestionIds(questionIds)
+    setCurrentView("flashcard")
+  }
 
   if (loading) {
     return (
@@ -98,6 +118,10 @@ export default function Home() {
     questions.map((q) => q.id),
   ).length
 
+  const reviewedCount = Object.keys(progress.cardProgress).filter(
+    (id) => progress.cardProgress[id]?.lastReviewDate,
+  ).length
+
   if (currentView === "quiz") {
     return (
       <main className="container max-w-4xl mx-auto p-4 py-8">
@@ -109,7 +133,15 @@ export default function Home() {
   if (currentView === "flashcard") {
     return (
       <main className="container max-w-4xl mx-auto p-4 py-8">
-        <FlashcardMode progress={progress} setProgress={handleSetProgress} onBack={() => setCurrentView("home")} />
+        <FlashcardMode
+          progress={progress}
+          setProgress={handleSetProgress}
+          onBack={() => {
+            setCurrentView("home")
+            setReviewQuestionIds(null)
+          }}
+          specificQuestionIds={reviewQuestionIds}
+        />
       </main>
     )
   }
@@ -131,6 +163,14 @@ export default function Home() {
           onBack={() => setCurrentView("home")}
           user={user}
         />
+      </main>
+    )
+  }
+
+  if (currentView === "review") {
+    return (
+      <main className="container max-w-4xl mx-auto p-4 py-8">
+        <ReviewHistory progress={progress} onBack={() => setCurrentView("home")} onReviewCards={handleReviewCards} />
       </main>
     )
   }
@@ -196,7 +236,16 @@ export default function Home() {
       </div>
 
       {/* Secondary Actions */}
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-3 gap-4">
+        <Button
+          variant="outline"
+          className="h-auto py-4 flex flex-col gap-1 bg-transparent"
+          onClick={() => setCurrentView("review")}
+        >
+          <History className="h-5 w-5" />
+          <span>Lịch sử</span>
+          {reviewedCount > 0 && <span className="text-xs text-muted-foreground">{reviewedCount} thẻ</span>}
+        </Button>
         <Button
           variant="outline"
           className="h-auto py-4 flex flex-col gap-1 bg-transparent"
