@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useCallback } from "react"
+import { useState, useEffect, useCallback, useRef } from "react"
 import { Button } from "@/components/ui/button"
 import { Flashcard } from "./flashcard"
 import { questions, topics, type Question } from "@/lib/questions"
@@ -18,7 +18,7 @@ interface FlashcardModeProps {
   specificQuestionIds?: string[] | null
 }
 
-type FilterType = "all" | "bookmarked" | "due"
+type FilterType = "all" | "bookmarked" | "due" | "weak"
 
 export function FlashcardMode({ progress, setProgress, onBack, specificQuestionIds }: FlashcardModeProps) {
   const [currentIndex, setCurrentIndex] = useState(0)
@@ -27,6 +27,7 @@ export function FlashcardMode({ progress, setProgress, onBack, specificQuestionI
   const [statusFilter, setStatusFilter] = useState<FilterType>("due")
   const [isStarted, setIsStarted] = useState(!!specificQuestionIds)
   const [reviewed, setReviewed] = useState(0)
+  const reviewedInSession = useRef<Set<string>>(new Set())
 
   const filterQuestions = useCallback(() => {
     if (specificQuestionIds && specificQuestionIds.length > 0) {
@@ -40,16 +41,26 @@ export function FlashcardMode({ progress, setProgress, onBack, specificQuestionI
       filtered = filtered.filter((q) => q.topic === topicFilter)
     }
 
+    const now = new Date()
+
     switch (statusFilter) {
       case "bookmarked":
         filtered = filtered.filter((q) => progress.bookmarkedQuestions.includes(q.id))
         break
       case "due":
-        const now = new Date()
         filtered = filtered.filter((q) => {
+          if (reviewedInSession.current.has(q.id)) return false
           const card = progress.cardProgress[q.id]
           if (!card) return true
           return new Date(card.nextReviewDate) <= now
+        })
+        break
+      case "weak":
+        filtered = filtered.filter((q) => {
+          if (reviewedInSession.current.has(q.id)) return false
+          const card = progress.cardProgress[q.id]
+          if (!card) return true
+          return card.easeFactor < 2.3 || card.repetitions < 2
         })
         break
     }
@@ -59,10 +70,11 @@ export function FlashcardMode({ progress, setProgress, onBack, specificQuestionI
 
   useEffect(() => {
     if (!isStarted) return
+    reviewedInSession.current = new Set()
     setShuffledQuestions(filterQuestions())
     setCurrentIndex(0)
     setReviewed(0)
-  }, [filterQuestions, isStarted])
+  }, [isStarted]) // Remove filterQuestions from deps to avoid constant re-filtering
 
   const currentQuestion = shuffledQuestions[currentIndex]
 
@@ -89,9 +101,16 @@ export function FlashcardMode({ progress, setProgress, onBack, specificQuestionI
     setProgress(updatedProgress)
     setReviewed((prev) => prev + 1)
 
+    reviewedInSession.current.add(currentQuestion.id)
+
     if (currentIndex < shuffledQuestions.length - 1) {
       setTimeout(() => {
         setCurrentIndex((prev) => prev + 1)
+      }, 300)
+    } else {
+      // Show completion screen
+      setTimeout(() => {
+        setCurrentIndex(shuffledQuestions.length)
       }, 300)
     }
   }
@@ -125,6 +144,7 @@ export function FlashcardMode({ progress, setProgress, onBack, specificQuestionI
   }
 
   const startFlashcards = () => {
+    reviewedInSession.current = new Set()
     setIsStarted(true)
   }
 
@@ -144,6 +164,21 @@ export function FlashcardMode({ progress, setProgress, onBack, specificQuestionI
   }
 
   if (!isStarted && !specificQuestionIds) {
+    const now = new Date()
+    const dueCount = questions.filter((q) => {
+      const card = progress.cardProgress[q.id]
+      if (!card) return true
+      return new Date(card.nextReviewDate) <= now
+    }).length
+
+    const weakCount = questions.filter((q) => {
+      const card = progress.cardProgress[q.id]
+      if (!card) return true
+      return card.easeFactor < 2.3 || card.repetitions < 2
+    }).length
+
+    const bookmarkedCount = progress.bookmarkedQuestions.length
+
     return (
       <div className="space-y-6 max-w-2xl mx-auto">
         <Button variant="ghost" onClick={onBack} className="mb-4">
@@ -178,9 +213,10 @@ export function FlashcardMode({ progress, setProgress, onBack, specificQuestionI
                 <SelectValue placeholder="Lọc câu hỏi" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">Tất cả</SelectItem>
-                <SelectItem value="due">Cần ôn tập</SelectItem>
-                <SelectItem value="bookmarked">Đã đánh dấu</SelectItem>
+                <SelectItem value="all">Tất cả ({questions.length})</SelectItem>
+                <SelectItem value="due">Cần ôn tập ({dueCount})</SelectItem>
+                <SelectItem value="weak">Câu yếu ({weakCount})</SelectItem>
+                <SelectItem value="bookmarked">Đã đánh dấu ({bookmarkedCount})</SelectItem>
               </SelectContent>
             </Select>
           </div>

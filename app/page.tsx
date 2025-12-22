@@ -14,6 +14,7 @@ import { Settings } from "@/components/settings"
 import { AuthForm } from "@/components/auth-form"
 import { UserMenu } from "@/components/user-menu"
 import { ReviewHistory } from "@/components/review-history"
+import { AIAssistant } from "@/components/ai-assistant"
 import {
   type UserProgress,
   loadProgress,
@@ -22,10 +23,10 @@ import {
   syncLocalToSupabase,
   getDefaultProgress,
 } from "@/lib/storage"
-import { questions } from "@/lib/questions"
-import { BookOpen, Layers, Search, SettingsIcon, Brain, Zap, GraduationCap, History } from "lucide-react"
+import { questions, type Question } from "@/lib/questions"
+import { BookOpen, Layers, Search, SettingsIcon, Brain, Zap, GraduationCap, History, Sparkles } from "lucide-react"
 
-type View = "home" | "quiz" | "flashcard" | "search" | "settings" | "auth" | "review"
+type View = "home" | "quiz" | "flashcard" | "search" | "settings" | "auth" | "review" | "ai"
 
 export default function Home() {
   const [user, setUser] = useState<User | null>(null)
@@ -33,6 +34,7 @@ export default function Home() {
   const [currentView, setCurrentView] = useState<View>("home")
   const [loading, setLoading] = useState(true)
   const [reviewQuestionIds, setReviewQuestionIds] = useState<string[] | null>(null)
+  const [aiInitialQuestion, setAiInitialQuestion] = useState<Question | null>(null)
 
   const supabase = createClient()
 
@@ -93,6 +95,11 @@ export default function Home() {
     setCurrentView("flashcard")
   }
 
+  const handleAskAI = useCallback((question: Question) => {
+    setAiInitialQuestion(question)
+    setCurrentView("ai")
+  }, [])
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -125,7 +132,12 @@ export default function Home() {
   if (currentView === "quiz") {
     return (
       <main className="container max-w-4xl mx-auto p-4 py-8">
-        <QuizMode progress={progress} setProgress={handleSetProgress} onBack={() => setCurrentView("home")} />
+        <QuizMode
+          progress={progress}
+          setProgress={handleSetProgress}
+          onBack={() => setCurrentView("home")}
+          onAskAI={handleAskAI}
+        />
       </main>
     )
   }
@@ -141,6 +153,7 @@ export default function Home() {
             setReviewQuestionIds(null)
           }}
           specificQuestionIds={reviewQuestionIds}
+          onAskAI={handleAskAI}
         />
       </main>
     )
@@ -149,7 +162,7 @@ export default function Home() {
   if (currentView === "search") {
     return (
       <main className="container max-w-4xl mx-auto p-4 py-8">
-        <SearchQuestions progress={progress} onBack={() => setCurrentView("home")} />
+        <SearchQuestions progress={progress} onBack={() => setCurrentView("home")} onAskAI={handleAskAI} />
       </main>
     )
   }
@@ -175,9 +188,22 @@ export default function Home() {
     )
   }
 
+  if (currentView === "ai") {
+    return (
+      <main className="container max-w-4xl mx-auto p-4 py-8">
+        <AIAssistant
+          onBack={() => {
+            setCurrentView("home")
+            setAiInitialQuestion(null)
+          }}
+          initialQuestion={aiInitialQuestion}
+        />
+      </main>
+    )
+  }
+
   return (
     <main className="container max-w-4xl mx-auto p-4 py-8 space-y-8">
-      {/* Header with User Menu */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <GraduationCap className="h-8 w-8 text-primary" />
@@ -186,13 +212,10 @@ export default function Home() {
         <UserMenu user={user} onLogin={() => setCurrentView("auth")} onLogout={() => {}} />
       </div>
 
-      {/* Subtitle */}
       <p className="text-muted-foreground text-center -mt-4">Ôn tập hiệu quả với Spaced Repetition</p>
 
-      {/* Stats */}
       <StatsCard progress={progress} />
 
-      {/* Quick Actions */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <Card className="cursor-pointer hover:border-primary transition-colors" onClick={() => setCurrentView("quiz")}>
           <CardHeader>
@@ -235,8 +258,15 @@ export default function Home() {
         </Card>
       </div>
 
-      {/* Secondary Actions */}
-      <div className="grid grid-cols-3 gap-4">
+      <div className="grid grid-cols-4 gap-4">
+        <Button
+          variant="outline"
+          className="h-auto py-4 flex flex-col gap-1 bg-transparent"
+          onClick={() => setCurrentView("ai")}
+        >
+          <Sparkles className="h-5 w-5 text-primary" />
+          <span>Hỏi AI</span>
+        </Button>
         <Button
           variant="outline"
           className="h-auto py-4 flex flex-col gap-1 bg-transparent"
@@ -264,10 +294,8 @@ export default function Home() {
         </Button>
       </div>
 
-      {/* Topic Progress */}
       <TopicProgress progress={progress} />
 
-      {/* Footer */}
       <footer className="text-center text-sm text-muted-foreground pt-8">
         <p>100 câu hỏi về Mạng Máy Tính</p>
         <p className="mt-1">TCP, QoS, IPv6, Routing, SDN, Virtualization, Container, Cloud</p>

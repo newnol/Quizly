@@ -3,7 +3,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import type { UserProgress } from "@/lib/storage"
 import { questions } from "@/lib/questions"
-import { Flame, Target, BookOpen, TrendingUp } from "lucide-react"
+import { Flame, Target, BookOpen, TrendingUp, CheckCircle } from "lucide-react"
 
 interface StatsCardProps {
   progress: UserProgress
@@ -27,8 +27,12 @@ export function StatsCard({ progress }: StatsCardProps) {
     return new Date(card.nextReviewDate) <= new Date()
   }).length
 
+  const masteredCount = Object.values(progress.cardProgress).filter(
+    (card) => card.easeFactor >= 2.5 && card.repetitions >= 3,
+  ).length
+
   return (
-    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+    <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
       <Card>
         <CardHeader className="pb-2">
           <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
@@ -64,6 +68,18 @@ export function StatsCard({ progress }: StatsCardProps) {
           <p className="text-2xl font-bold">
             {answeredQuestions}/{totalQuestions}
           </p>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader className="pb-2">
+          <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+            <CheckCircle className="h-4 w-4 text-emerald-500" />
+            Đã ổn
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <p className="text-2xl font-bold">{masteredCount}</p>
         </CardContent>
       </Card>
 
