@@ -24,11 +24,7 @@ import {
   syncLocalToSupabase,
   getDefaultProgress,
 } from "@/lib/storage"
-<<<<<<< HEAD
 import { questions, type Question } from "@/lib/questions"
-import { BookOpen, Layers, Search, SettingsIcon, Brain, Zap, GraduationCap, History, Sparkles } from "lucide-react"
-=======
-import { questions } from "@/lib/questions"
 import { 
   BookOpen, 
   Layers, 
@@ -41,9 +37,9 @@ import {
   Globe,
   FolderOpen,
   Plus,
+  Sparkles,
 } from "lucide-react"
 import Link from "next/link"
->>>>>>> ffb2517 (feat: add initial project structure and configuration files)
 
 type View = "home" | "quiz" | "flashcard" | "search" | "settings" | "auth" | "review" | "ai"
 
@@ -234,32 +230,9 @@ export default function Home() {
 
       <p className="text-muted-foreground text-center -mt-4">Ôn tập hiệu quả với Spaced Repetition</p>
 
-<<<<<<< HEAD
-      <StatsCard progress={progress} />
-
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <Card className="cursor-pointer hover:border-primary transition-colors" onClick={() => setCurrentView("quiz")}>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Zap className="h-5 w-5 text-yellow-500" />
-              Quiz Mode
-            </CardTitle>
-            <CardDescription>Trắc nghiệm với phản hồi tức thì</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Button className="w-full">
-              <BookOpen className="h-4 w-4 mr-2" />
-              Bắt đầu Quiz
-            </Button>
-          </CardContent>
-        </Card>
-
-        <Card
-=======
       {/* Navigation to Question Sets */}
       <div className="grid grid-cols-2 gap-4">
         <Card 
->>>>>>> ffb2517 (feat: add initial project structure and configuration files)
           className="cursor-pointer hover:border-primary transition-colors"
           onClick={() => router.push("/explore")}
         >
@@ -286,28 +259,12 @@ export default function Home() {
         </Card>
       </div>
 
-<<<<<<< HEAD
-      <div className="grid grid-cols-4 gap-4">
-        <Button
-          variant="outline"
-          className="h-auto py-4 flex flex-col gap-1 bg-transparent"
-          onClick={() => setCurrentView("ai")}
-        >
-          <Sparkles className="h-5 w-5 text-primary" />
-          <span>Hỏi AI</span>
-        </Button>
-        <Button
-          variant="outline"
-          className="h-auto py-4 flex flex-col gap-1 bg-transparent"
-          onClick={() => setCurrentView("review")}
-=======
       {/* Create New Set Button */}
       {user && (
         <Button 
           variant="outline" 
           className="w-full bg-transparent" 
           asChild
->>>>>>> ffb2517 (feat: add initial project structure and configuration files)
         >
           <Link href="/sets/new">
             <Plus className="h-4 w-4 mr-2" />
@@ -316,9 +273,6 @@ export default function Home() {
         </Button>
       )}
 
-<<<<<<< HEAD
-      <TopicProgress progress={progress} />
-=======
       {/* Default Question Set - Mạng Máy Tính */}
       <div className="space-y-4">
         <div className="flex items-center justify-between">
@@ -373,7 +327,15 @@ export default function Home() {
         </div>
 
         {/* Secondary Actions */}
-        <div className="grid grid-cols-3 gap-4">
+        <div className="grid grid-cols-4 gap-4">
+          <Button
+            variant="outline"
+            className="h-auto py-4 flex flex-col gap-1 bg-transparent"
+            onClick={() => setCurrentView("ai")}
+          >
+            <Sparkles className="h-5 w-5 text-primary" />
+            <span>Hỏi AI</span>
+          </Button>
           <Button
             variant="outline"
             className="h-auto py-4 flex flex-col gap-1 bg-transparent"
@@ -404,7 +366,6 @@ export default function Home() {
         {/* Topic Progress */}
         <TopicProgress progress={progress} />
       </div>
->>>>>>> ffb2517 (feat: add initial project structure and configuration files)
 
       <footer className="text-center text-sm text-muted-foreground pt-8">
         <p>Tạo và chia sẻ bộ câu hỏi của riêng bạn</p>

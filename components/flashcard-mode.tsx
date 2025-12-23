@@ -17,20 +17,19 @@ interface FlashcardModeProps {
   onBack: () => void
   specificQuestionIds?: string[] | null
   questionSetId?: string
+  onAskAI?: (question: Question) => void
 }
 
 type FilterType = "all" | "bookmarked" | "due" | "weak"
 
-export function FlashcardMode({ progress, setProgress, onBack, specificQuestionIds, questionSetId }: FlashcardModeProps) {
+export function FlashcardMode({ progress, setProgress, onBack, specificQuestionIds, questionSetId, onAskAI }: FlashcardModeProps) {
   const [currentIndex, setCurrentIndex] = useState(0)
   const [shuffledQuestions, setShuffledQuestions] = useState<Question[]>([])
   const [topicFilter, setTopicFilter] = useState<string>("all")
   const [statusFilter, setStatusFilter] = useState<FilterType>("due")
   const [isStarted, setIsStarted] = useState(!!specificQuestionIds)
   const [reviewed, setReviewed] = useState(0)
-<<<<<<< HEAD
   const reviewedInSession = useRef<Set<string>>(new Set())
-=======
   const [allQuestions, setAllQuestions] = useState<Question[]>(defaultQuestions)
   const [topics, setTopics] = useState<string[]>(defaultTopics)
   const [loadingQuestions, setLoadingQuestions] = useState(!!questionSetId)
@@ -56,7 +55,6 @@ export function FlashcardMode({ progress, setProgress, onBack, specificQuestionI
     }
     loadQuestions()
   }, [questionSetId])
->>>>>>> ffb2517 (feat: add initial project structure and configuration files)
 
   const filterQuestions = useCallback(() => {
     if (specificQuestionIds && specificQuestionIds.length > 0) {
@@ -202,13 +200,13 @@ export function FlashcardMode({ progress, setProgress, onBack, specificQuestionI
 
   if (!isStarted && !specificQuestionIds) {
     const now = new Date()
-    const dueCount = questions.filter((q) => {
+    const dueCount = allQuestions.filter((q) => {
       const card = progress.cardProgress[q.id]
       if (!card) return true
       return new Date(card.nextReviewDate) <= now
     }).length
 
-    const weakCount = questions.filter((q) => {
+    const weakCount = allQuestions.filter((q) => {
       const card = progress.cardProgress[q.id]
       if (!card) return true
       return card.easeFactor < 2.3 || card.repetitions < 2
@@ -250,7 +248,7 @@ export function FlashcardMode({ progress, setProgress, onBack, specificQuestionI
                 <SelectValue placeholder="Lọc câu hỏi" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">Tất cả ({questions.length})</SelectItem>
+                <SelectItem value="all">Tất cả ({allQuestions.length})</SelectItem>
                 <SelectItem value="due">Cần ôn tập ({dueCount})</SelectItem>
                 <SelectItem value="weak">Câu yếu ({weakCount})</SelectItem>
                 <SelectItem value="bookmarked">Đã đánh dấu ({bookmarkedCount})</SelectItem>
@@ -325,6 +323,7 @@ export function FlashcardMode({ progress, setProgress, onBack, specificQuestionI
         onRate={handleRate}
         questionNumber={currentIndex + 1}
         totalQuestions={shuffledQuestions.length}
+        onAskAI={onAskAI}
       />
 
       <div className="flex justify-between">
