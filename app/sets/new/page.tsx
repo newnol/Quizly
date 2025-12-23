@@ -17,8 +17,9 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { QuestionEditor, QuestionCard, type QuestionFormData } from "@/components/question-editor"
+import { ImportQuestionsDialog } from "@/components/import-questions-dialog"
 import { createQuestionSet, createManyQuestions } from "@/lib/question-sets"
-import { ArrowLeft, Globe, Link2, Lock, Plus, Save } from "lucide-react"
+import { ArrowLeft, Globe, Link2, Lock, Plus, Save, Upload } from "lucide-react"
 import Link from "next/link"
 
 export default function NewSetPage() {
@@ -136,6 +137,10 @@ export default function NewSetPage() {
     }
   }
 
+  const handleImportQuestions = (importedQuestions: QuestionFormData[]) => {
+    setQuestions([...questions, ...importedQuestions])
+  }
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -233,12 +238,20 @@ export default function NewSetPage() {
             <h2 className="text-xl font-semibold">Câu hỏi</h2>
             <p className="text-sm text-muted-foreground">{questions.length} câu hỏi</p>
           </div>
-          {!showNewQuestion && (
-            <Button onClick={() => setShowNewQuestion(true)}>
-              <Plus className="h-4 w-4 mr-2" />
-              Thêm câu hỏi
-            </Button>
-          )}
+          <div className="flex items-center gap-2">
+            <ImportQuestionsDialog onImport={handleImportQuestions}>
+              <Button variant="outline">
+                <Upload className="h-4 w-4 mr-2" />
+                Import
+              </Button>
+            </ImportQuestionsDialog>
+            {!showNewQuestion && (
+              <Button onClick={() => setShowNewQuestion(true)}>
+                <Plus className="h-4 w-4 mr-2" />
+                Thêm câu hỏi
+              </Button>
+            )}
+          </div>
         </div>
 
         {errors.questions && (

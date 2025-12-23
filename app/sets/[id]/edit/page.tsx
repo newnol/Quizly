@@ -17,16 +17,18 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { QuestionEditor, QuestionCard, type QuestionFormData } from "@/components/question-editor"
+import { ImportQuestionsDialog } from "@/components/import-questions-dialog"
 import {
   getQuestionSetById,
   getQuestionsBySetId,
   updateQuestionSet,
   createQuestion,
+  createManyQuestions,
   updateQuestion,
   deleteQuestion,
   type QuestionSet,
 } from "@/lib/question-sets"
-import { ArrowLeft, Globe, Link2, Lock, Plus, Save } from "lucide-react"
+import { ArrowLeft, Globe, Link2, Lock, Plus, Save, Upload } from "lucide-react"
 import Link from "next/link"
 
 export default function EditSetPage({ params }: { params: Promise<{ id: string }> }) {
@@ -209,6 +211,38 @@ export default function EditSetPage({ params }: { params: Promise<{ id: string }
     }
   }
 
+  const handleImportQuestions = async (importedQuestions: QuestionFormData[]) => {
+    if (!questionSet) return
+
+    try {
+      const questionsToCreate = importedQuestions.map((q, index) => ({
+        question: q.question,
+        options: q.options,
+        correct_answer: q.correctAnswer,
+        explanation: q.explanation || undefined,
+        topic: q.topic || undefined,
+        order_index: questions.length + index,
+      }))
+
+      const newQuestions = await createManyQuestions(questionSet.id, questionsToCreate)
+      
+      setQuestions([
+        ...questions,
+        ...newQuestions.map((nq) => ({
+          question: nq.question,
+          options: nq.options,
+          correctAnswer: nq.correct_answer,
+          explanation: nq.explanation || "",
+          topic: nq.topic || "",
+          dbId: nq.id,
+        })),
+      ])
+    } catch (error) {
+      console.error("Error importing questions:", error)
+      alert("Có lỗi xảy ra khi import. Vui lòng thử lại.")
+    }
+  }
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -306,12 +340,20 @@ export default function EditSetPage({ params }: { params: Promise<{ id: string }
             <h2 className="text-xl font-semibold">Câu hỏi</h2>
             <p className="text-sm text-muted-foreground">{questions.length} câu hỏi</p>
           </div>
-          {!showNewQuestion && (
-            <Button onClick={() => setShowNewQuestion(true)}>
-              <Plus className="h-4 w-4 mr-2" />
-              Thêm câu hỏi
-            </Button>
-          )}
+          <div className="flex items-center gap-2">
+            <ImportQuestionsDialog onImport={handleImportQuestions}>
+              <Button variant="outline">
+                <Upload className="h-4 w-4 mr-2" />
+                Import
+              </Button>
+            </ImportQuestionsDialog>
+            {!showNewQuestion && (
+              <Button onClick={() => setShowNewQuestion(true)}>
+                <Plus className="h-4 w-4 mr-2" />
+                Thêm câu hỏi
+              </Button>
+            )}
+          </div>
         </div>
 
         {errors.questions && (
