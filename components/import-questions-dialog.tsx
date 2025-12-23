@@ -248,7 +248,7 @@ function parseText(content: string): ParseResult {
 export function ImportQuestionsDialog({ onImport, children }: ImportQuestionsDialogProps) {
   const [open, setOpen] = useState(false)
   const [content, setContent] = useState("")
-  const [format, setFormat] = useState<FormatType>("json")
+  const [format, setFormat] = useState<FormatType>("pdf")
   const [parseResult, setParseResult] = useState<ParseResult | null>(null)
   const [pdfFile, setPdfFile] = useState<File | null>(null)
   const [ocrText, setOcrText] = useState("")
@@ -445,6 +445,10 @@ export function ImportQuestionsDialog({ onImport, children }: ImportQuestionsDia
           setParseResult(null)
         }}>
           <TabsList className="grid w-full grid-cols-4">
+            <TabsTrigger value="pdf" className="flex items-center gap-2">
+              <Sparkles className="h-4 w-4" />
+              PDF/Ảnh
+            </TabsTrigger>
             <TabsTrigger value="json" className="flex items-center gap-2">
               <FileJson className="h-4 w-4" />
               JSON
@@ -456,10 +460,6 @@ export function ImportQuestionsDialog({ onImport, children }: ImportQuestionsDia
             <TabsTrigger value="text" className="flex items-center gap-2">
               <FileText className="h-4 w-4" />
               Text
-            </TabsTrigger>
-            <TabsTrigger value="pdf" className="flex items-center gap-2">
-              <Sparkles className="h-4 w-4" />
-              PDF (AI)
             </TabsTrigger>
           </TabsList>
 
