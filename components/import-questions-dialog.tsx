@@ -447,7 +447,7 @@ export function ImportQuestionsDialog({ onImport, children }: ImportQuestionsDia
           <TabsList className="grid w-full grid-cols-4">
             <TabsTrigger value="pdf" className="flex items-center gap-2">
               <Sparkles className="h-4 w-4" />
-              PDF/Ảnh
+              Upload AI
             </TabsTrigger>
             <TabsTrigger value="json" className="flex items-center gap-2">
               <FileJson className="h-4 w-4" />
@@ -526,18 +526,18 @@ export function ImportQuestionsDialog({ onImport, children }: ImportQuestionsDia
             <Alert>
               <Sparkles className="h-4 w-4" />
               <AlertDescription>
-                <strong>Mistral OCR:</strong> Đọc PDF và ảnh (kể cả scan) với độ chính xác cao nhất<br />
-                <strong>Groq AI:</strong> Phân tích và format câu hỏi tự động
+                <strong>Hỗ trợ:</strong> PDF, Word (DOCX), Ảnh (JPG, PNG, ...)<br />
+                <strong>AI:</strong> Tự động đọc và phân tích câu hỏi từ file của bạn
               </AlertDescription>
             </Alert>
 
             {/* PDF Upload */}
             <div className="space-y-2">
-              <Label>Tải file PDF:</Label>
+              <Label>Tải file lên:</Label>
               <input
                 ref={pdfInputRef}
                 type="file"
-                accept=".pdf,image/*"
+                accept=".pdf,.doc,.docx,image/*"
                 onChange={handlePdfUpload}
                 className="hidden"
               />
@@ -548,7 +548,7 @@ export function ImportQuestionsDialog({ onImport, children }: ImportQuestionsDia
                 disabled={isProcessing}
               >
                 <Upload className="h-4 w-4 mr-2" />
-                Chọn file (PDF, JPG, PNG)
+                Chọn file (PDF, Word, Ảnh)
               </Button>
               {pdfFile && (
                 <p className="text-sm text-muted-foreground">
