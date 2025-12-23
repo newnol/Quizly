@@ -3,10 +3,10 @@
 import { useState, useEffect, useCallback, useRef } from "react"
 import { Button } from "@/components/ui/button"
 import { Flashcard } from "./flashcard"
-import { questions, topics, type Question } from "@/lib/questions"
+import { questions as defaultQuestions, topics as defaultTopics, fetchQuestions, getTopicsFromQuestions, type Question } from "@/lib/questions"
 import { type UserProgress, updateStreak, type StudySession } from "@/lib/storage"
 import { calculateNextReview, type Quality } from "@/lib/spaced-repetition"
-import { ArrowLeft, ArrowRight, Shuffle, RotateCcw } from "lucide-react"
+import { ArrowLeft, ArrowRight, Shuffle, RotateCcw, Loader2 } from "lucide-react"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Label } from "@/components/ui/label"
 import { Progress } from "@/components/ui/progress"
@@ -16,26 +16,55 @@ interface FlashcardModeProps {
   setProgress: (progress: UserProgress) => void
   onBack: () => void
   specificQuestionIds?: string[] | null
+  questionSetId?: string
 }
 
 type FilterType = "all" | "bookmarked" | "due" | "weak"
 
-export function FlashcardMode({ progress, setProgress, onBack, specificQuestionIds }: FlashcardModeProps) {
+export function FlashcardMode({ progress, setProgress, onBack, specificQuestionIds, questionSetId }: FlashcardModeProps) {
   const [currentIndex, setCurrentIndex] = useState(0)
   const [shuffledQuestions, setShuffledQuestions] = useState<Question[]>([])
   const [topicFilter, setTopicFilter] = useState<string>("all")
   const [statusFilter, setStatusFilter] = useState<FilterType>("due")
   const [isStarted, setIsStarted] = useState(!!specificQuestionIds)
   const [reviewed, setReviewed] = useState(0)
+<<<<<<< HEAD
   const reviewedInSession = useRef<Set<string>>(new Set())
+=======
+  const [allQuestions, setAllQuestions] = useState<Question[]>(defaultQuestions)
+  const [topics, setTopics] = useState<string[]>(defaultTopics)
+  const [loadingQuestions, setLoadingQuestions] = useState(!!questionSetId)
+
+  // Load questions from database if questionSetId is provided
+  useEffect(() => {
+    const loadQuestions = async () => {
+      if (questionSetId) {
+        setLoadingQuestions(true)
+        try {
+          const questions = await fetchQuestions(questionSetId)
+          setAllQuestions(questions)
+          setTopics(getTopicsFromQuestions(questions))
+        } catch (error) {
+          console.error("Error loading questions:", error)
+        } finally {
+          setLoadingQuestions(false)
+        }
+      } else {
+        setAllQuestions(defaultQuestions)
+        setTopics(defaultTopics)
+      }
+    }
+    loadQuestions()
+  }, [questionSetId])
+>>>>>>> ffb2517 (feat: add initial project structure and configuration files)
 
   const filterQuestions = useCallback(() => {
     if (specificQuestionIds && specificQuestionIds.length > 0) {
-      const specificQuestions = questions.filter((q) => specificQuestionIds.includes(q.id))
+      const specificQuestions = allQuestions.filter((q) => specificQuestionIds.includes(q.id))
       return specificQuestions.sort(() => Math.random() - 0.5)
     }
 
-    let filtered = [...questions]
+    let filtered = [...allQuestions]
 
     if (topicFilter !== "all") {
       filtered = filtered.filter((q) => q.topic === topicFilter)
@@ -66,7 +95,7 @@ export function FlashcardMode({ progress, setProgress, onBack, specificQuestionI
     }
 
     return filtered.sort(() => Math.random() - 0.5)
-  }, [topicFilter, statusFilter, progress, specificQuestionIds])
+  }, [topicFilter, statusFilter, progress, specificQuestionIds, allQuestions])
 
   useEffect(() => {
     if (!isStarted) return
@@ -161,6 +190,14 @@ export function FlashcardMode({ progress, setProgress, onBack, specificQuestionI
     }
     setProgress(updatedProgress)
     onBack()
+  }
+
+  if (loadingQuestions) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+      </div>
+    )
   }
 
   if (!isStarted && !specificQuestionIds) {

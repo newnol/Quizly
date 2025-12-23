@@ -202,3 +202,79 @@ export function importData(jsonString: string): UserProgress | null {
     return null
   }
 }
+
+// =====================
+// Question Set Progress Helpers
+// =====================
+
+export function getProgressForQuestionSet(
+  progress: UserProgress,
+  questionIds: string[]
+): {
+  totalQuestions: number
+  reviewedCount: number
+  masteredCount: number
+  dueCount: number
+  averageEaseFactor: number
+} {
+  const now = new Date()
+  let reviewedCount = 0
+  let masteredCount = 0
+  let dueCount = 0
+  let totalEaseFactor = 0
+  let easeCount = 0
+
+  questionIds.forEach((id) => {
+    const card = progress.cardProgress[id]
+    if (card) {
+      if (card.lastReviewDate) {
+        reviewedCount++
+        totalEaseFactor += card.easeFactor
+        easeCount++
+      }
+      if (card.repetitions >= 3 && card.easeFactor >= 2.5) {
+        masteredCount++
+      }
+      if (new Date(card.nextReviewDate) <= now) {
+        dueCount++
+      }
+    } else {
+      dueCount++ // Never reviewed = due
+    }
+  })
+
+  return {
+    totalQuestions: questionIds.length,
+    reviewedCount,
+    masteredCount,
+    dueCount,
+    averageEaseFactor: easeCount > 0 ? totalEaseFactor / easeCount : 2.5,
+  }
+}
+
+export function getWrongAnswersForQuestionSet(
+  progress: UserProgress,
+  questionIds: string[]
+): string[] {
+  return progress.wrongAnswers.filter((id) => questionIds.includes(id))
+}
+
+export function getBookmarkedForQuestionSet(
+  progress: UserProgress,
+  questionIds: string[]
+): string[] {
+  return progress.bookmarkedQuestions.filter((id) => questionIds.includes(id))
+}
+
+export function getNotesForQuestionSet(
+  progress: UserProgress,
+  questionIds: string[]
+): Record<string, string> {
+  const notes: Record<string, string> = {}
+  questionIds.forEach((id) => {
+    if (progress.notes[id]) {
+      notes[id] = progress.notes[id]
+    }
+  })
+  return notes
+}

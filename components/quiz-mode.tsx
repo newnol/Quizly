@@ -3,10 +3,10 @@
 import { useState, useEffect, useCallback } from "react"
 import { Button } from "@/components/ui/button"
 import { QuizCard } from "./quiz-card"
-import { questions, topics, type Question } from "@/lib/questions"
+import { questions as defaultQuestions, topics as defaultTopics, fetchQuestions, getTopicsFromQuestions, type Question } from "@/lib/questions"
 import { type UserProgress, updateStreak, type StudySession } from "@/lib/storage"
 import { calculateNextReview, qualityFromAnswer } from "@/lib/spaced-repetition"
-import { ArrowLeft, ArrowRight, Shuffle, Clock, RotateCcw } from "lucide-react"
+import { ArrowLeft, ArrowRight, Shuffle, Clock, RotateCcw, Loader2 } from "lucide-react"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Switch } from "@/components/ui/switch"
 import { Label } from "@/components/ui/label"
@@ -16,11 +16,12 @@ interface QuizModeProps {
   progress: UserProgress
   setProgress: (progress: UserProgress) => void
   onBack: () => void
+  questionSetId?: string
 }
 
 type FilterType = "all" | "bookmarked" | "wrong" | "new" | "due"
 
-export function QuizMode({ progress, setProgress, onBack }: QuizModeProps) {
+export function QuizMode({ progress, setProgress, onBack, questionSetId }: QuizModeProps) {
   const [currentIndex, setCurrentIndex] = useState(0)
   const [showFeedback, setShowFeedback] = useState(false)
   const [selectedAnswer, setSelectedAnswer] = useState<number | null>(null)
@@ -31,9 +32,34 @@ export function QuizMode({ progress, setProgress, onBack }: QuizModeProps) {
   const [timeLeft, setTimeLeft] = useState(30)
   const [sessionStats, setSessionStats] = useState({ correct: 0, total: 0 })
   const [isStarted, setIsStarted] = useState(false)
+  const [allQuestions, setAllQuestions] = useState<Question[]>(defaultQuestions)
+  const [topics, setTopics] = useState<string[]>(defaultTopics)
+  const [loadingQuestions, setLoadingQuestions] = useState(!!questionSetId)
+
+  // Load questions from database if questionSetId is provided
+  useEffect(() => {
+    const loadQuestions = async () => {
+      if (questionSetId) {
+        setLoadingQuestions(true)
+        try {
+          const questions = await fetchQuestions(questionSetId)
+          setAllQuestions(questions)
+          setTopics(getTopicsFromQuestions(questions))
+        } catch (error) {
+          console.error("Error loading questions:", error)
+        } finally {
+          setLoadingQuestions(false)
+        }
+      } else {
+        setAllQuestions(defaultQuestions)
+        setTopics(defaultTopics)
+      }
+    }
+    loadQuestions()
+  }, [questionSetId])
 
   const filterQuestions = useCallback(() => {
-    let filtered = [...questions]
+    let filtered = [...allQuestions]
 
     if (topicFilter !== "all") {
       filtered = filtered.filter((q) => q.topic === topicFilter)
@@ -61,7 +87,7 @@ export function QuizMode({ progress, setProgress, onBack }: QuizModeProps) {
 
     // Shuffle
     return filtered.sort(() => Math.random() - 0.5)
-  }, [topicFilter, statusFilter, progress])
+  }, [topicFilter, statusFilter, progress, allQuestions])
 
   useEffect(() => {
     if (!isStarted) return
@@ -186,6 +212,14 @@ export function QuizMode({ progress, setProgress, onBack }: QuizModeProps) {
   const startQuiz = () => {
     setIsStarted(true)
     setSessionStats({ correct: 0, total: 0 })
+  }
+
+  if (loadingQuestions) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+      </div>
+    )
   }
 
   if (!isStarted) {

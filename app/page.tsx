@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect, useCallback } from "react"
+import { useRouter } from "next/navigation"
 import { createClient } from "@/lib/supabase/client"
 import type { User } from "@supabase/supabase-js"
 import { Button } from "@/components/ui/button"
@@ -23,12 +24,31 @@ import {
   syncLocalToSupabase,
   getDefaultProgress,
 } from "@/lib/storage"
+<<<<<<< HEAD
 import { questions, type Question } from "@/lib/questions"
 import { BookOpen, Layers, Search, SettingsIcon, Brain, Zap, GraduationCap, History, Sparkles } from "lucide-react"
+=======
+import { questions } from "@/lib/questions"
+import { 
+  BookOpen, 
+  Layers, 
+  Search, 
+  SettingsIcon, 
+  Brain, 
+  Zap, 
+  GraduationCap, 
+  History,
+  Globe,
+  FolderOpen,
+  Plus,
+} from "lucide-react"
+import Link from "next/link"
+>>>>>>> ffb2517 (feat: add initial project structure and configuration files)
 
 type View = "home" | "quiz" | "flashcard" | "search" | "settings" | "auth" | "review" | "ai"
 
 export default function Home() {
+  const router = useRouter()
   const [user, setUser] = useState<User | null>(null)
   const [progress, setProgress] = useState<UserProgress>(getDefaultProgress())
   const [currentView, setCurrentView] = useState<View>("home")
@@ -207,13 +227,14 @@ export default function Home() {
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <GraduationCap className="h-8 w-8 text-primary" />
-          <h1 className="text-2xl sm:text-3xl font-bold">Mạng Máy Tính</h1>
+          <h1 className="text-2xl sm:text-3xl font-bold">Quizly</h1>
         </div>
         <UserMenu user={user} onLogin={() => setCurrentView("auth")} onLogout={() => {}} />
       </div>
 
       <p className="text-muted-foreground text-center -mt-4">Ôn tập hiệu quả với Spaced Repetition</p>
 
+<<<<<<< HEAD
       <StatsCard progress={progress} />
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -234,30 +255,38 @@ export default function Home() {
         </Card>
 
         <Card
+=======
+      {/* Navigation to Question Sets */}
+      <div className="grid grid-cols-2 gap-4">
+        <Card 
+>>>>>>> ffb2517 (feat: add initial project structure and configuration files)
           className="cursor-pointer hover:border-primary transition-colors"
-          onClick={() => setCurrentView("flashcard")}
+          onClick={() => router.push("/explore")}
         >
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Brain className="h-5 w-5 text-purple-500" />
-              Flashcard
-              {dueCount > 0 && (
-                <span className="ml-auto bg-primary text-primary-foreground text-xs px-2 py-0.5 rounded-full">
-                  {dueCount} cần ôn
-                </span>
-              )}
+          <CardHeader className="pb-3">
+            <CardTitle className="flex items-center gap-2 text-lg">
+              <Globe className="h-5 w-5 text-blue-500" />
+              Khám phá
             </CardTitle>
-            <CardDescription>Ôn tập với thuật toán SM-2</CardDescription>
+            <CardDescription>Tìm bộ câu hỏi từ cộng đồng</CardDescription>
           </CardHeader>
-          <CardContent>
-            <Button variant="outline" className="w-full bg-transparent">
-              <Layers className="h-4 w-4 mr-2" />
-              Xem Flashcard
-            </Button>
-          </CardContent>
+        </Card>
+
+        <Card 
+          className="cursor-pointer hover:border-primary transition-colors"
+          onClick={() => user ? router.push("/my-sets") : setCurrentView("auth")}
+        >
+          <CardHeader className="pb-3">
+            <CardTitle className="flex items-center gap-2 text-lg">
+              <FolderOpen className="h-5 w-5 text-orange-500" />
+              Bộ của tôi
+            </CardTitle>
+            <CardDescription>Quản lý bộ câu hỏi của bạn</CardDescription>
+          </CardHeader>
         </Card>
       </div>
 
+<<<<<<< HEAD
       <div className="grid grid-cols-4 gap-4">
         <Button
           variant="outline"
@@ -271,34 +300,114 @@ export default function Home() {
           variant="outline"
           className="h-auto py-4 flex flex-col gap-1 bg-transparent"
           onClick={() => setCurrentView("review")}
+=======
+      {/* Create New Set Button */}
+      {user && (
+        <Button 
+          variant="outline" 
+          className="w-full bg-transparent" 
+          asChild
+>>>>>>> ffb2517 (feat: add initial project structure and configuration files)
         >
-          <History className="h-5 w-5" />
-          <span>Lịch sử</span>
-          {reviewedCount > 0 && <span className="text-xs text-muted-foreground">{reviewedCount} thẻ</span>}
+          <Link href="/sets/new">
+            <Plus className="h-4 w-4 mr-2" />
+            Tạo bộ câu hỏi mới
+          </Link>
         </Button>
-        <Button
-          variant="outline"
-          className="h-auto py-4 flex flex-col gap-1 bg-transparent"
-          onClick={() => setCurrentView("search")}
-        >
-          <Search className="h-5 w-5" />
-          <span>Tìm kiếm</span>
-        </Button>
-        <Button
-          variant="outline"
-          className="h-auto py-4 flex flex-col gap-1 bg-transparent"
-          onClick={() => setCurrentView("settings")}
-        >
-          <SettingsIcon className="h-5 w-5" />
-          <span>Cài đặt</span>
-        </Button>
-      </div>
+      )}
 
+<<<<<<< HEAD
       <TopicProgress progress={progress} />
+=======
+      {/* Default Question Set - Mạng Máy Tính */}
+      <div className="space-y-4">
+        <div className="flex items-center justify-between">
+          <h2 className="text-xl font-semibold">Mạng Máy Tính</h2>
+          <span className="text-sm text-muted-foreground">100 câu hỏi</span>
+        </div>
+
+        {/* Stats */}
+        <StatsCard progress={progress} />
+
+        {/* Quick Actions */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <Card className="cursor-pointer hover:border-primary transition-colors" onClick={() => setCurrentView("quiz")}>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Zap className="h-5 w-5 text-yellow-500" />
+                Quiz Mode
+              </CardTitle>
+              <CardDescription>Trắc nghiệm với phản hồi tức thì</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Button className="w-full">
+                <BookOpen className="h-4 w-4 mr-2" />
+                Bắt đầu Quiz
+              </Button>
+            </CardContent>
+          </Card>
+
+          <Card
+            className="cursor-pointer hover:border-primary transition-colors"
+            onClick={() => setCurrentView("flashcard")}
+          >
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Brain className="h-5 w-5 text-purple-500" />
+                Flashcard
+                {dueCount > 0 && (
+                  <span className="ml-auto bg-primary text-primary-foreground text-xs px-2 py-0.5 rounded-full">
+                    {dueCount} cần ôn
+                  </span>
+                )}
+              </CardTitle>
+              <CardDescription>Ôn tập với thuật toán SM-2</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Button variant="outline" className="w-full bg-transparent">
+                <Layers className="h-4 w-4 mr-2" />
+                Xem Flashcard
+              </Button>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Secondary Actions */}
+        <div className="grid grid-cols-3 gap-4">
+          <Button
+            variant="outline"
+            className="h-auto py-4 flex flex-col gap-1 bg-transparent"
+            onClick={() => setCurrentView("review")}
+          >
+            <History className="h-5 w-5" />
+            <span>Lịch sử</span>
+            {reviewedCount > 0 && <span className="text-xs text-muted-foreground">{reviewedCount} thẻ</span>}
+          </Button>
+          <Button
+            variant="outline"
+            className="h-auto py-4 flex flex-col gap-1 bg-transparent"
+            onClick={() => setCurrentView("search")}
+          >
+            <Search className="h-5 w-5" />
+            <span>Tìm kiếm</span>
+          </Button>
+          <Button
+            variant="outline"
+            className="h-auto py-4 flex flex-col gap-1 bg-transparent"
+            onClick={() => setCurrentView("settings")}
+          >
+            <SettingsIcon className="h-5 w-5" />
+            <span>Cài đặt</span>
+          </Button>
+        </div>
+
+        {/* Topic Progress */}
+        <TopicProgress progress={progress} />
+      </div>
+>>>>>>> ffb2517 (feat: add initial project structure and configuration files)
 
       <footer className="text-center text-sm text-muted-foreground pt-8">
-        <p>100 câu hỏi về Mạng Máy Tính</p>
-        <p className="mt-1">TCP, QoS, IPv6, Routing, SDN, Virtualization, Container, Cloud</p>
+        <p>Tạo và chia sẻ bộ câu hỏi của riêng bạn</p>
       </footer>
     </main>
   )

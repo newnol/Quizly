@@ -1,3 +1,5 @@
+import { getQuestionsBySetId, type Question as DBQuestion } from "./question-sets"
+
 export interface Question {
   id: string
   question: string
@@ -5,6 +7,49 @@ export interface Question {
   correctAnswer: number
   explanation: string
   topic: string
+}
+
+// Special ID for the default hardcoded question set
+export const DEFAULT_QUESTION_SET_ID = "default-networking"
+
+// Convert database question format to app format
+export function dbQuestionToAppQuestion(dbQuestion: DBQuestion): Question {
+  return {
+    id: dbQuestion.id,
+    question: dbQuestion.question,
+    options: dbQuestion.options,
+    correctAnswer: dbQuestion.correct_answer,
+    explanation: dbQuestion.explanation || "",
+    topic: dbQuestion.topic || "",
+  }
+}
+
+// Convert app question format to database format (for creating questions)
+export function appQuestionToDbFormat(question: Question) {
+  return {
+    question: question.question,
+    options: question.options,
+    correct_answer: question.correctAnswer,
+    explanation: question.explanation,
+    topic: question.topic,
+  }
+}
+
+// Fetch questions - returns hardcoded questions for default set, otherwise fetches from DB
+export async function fetchQuestions(questionSetId?: string): Promise<Question[]> {
+  // If no ID or default ID, return hardcoded questions
+  if (!questionSetId || questionSetId === DEFAULT_QUESTION_SET_ID) {
+    return questions
+  }
+
+  // Fetch from database
+  const dbQuestions = await getQuestionsBySetId(questionSetId)
+  return dbQuestions.map(dbQuestionToAppQuestion)
+}
+
+// Get topics from a list of questions
+export function getTopicsFromQuestions(questionList: Question[]): string[] {
+  return [...new Set(questionList.map((q) => q.topic).filter(Boolean))]
 }
 
 export const questions: Question[] = [
