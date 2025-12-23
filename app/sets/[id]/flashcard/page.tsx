@@ -26,10 +26,10 @@ export default function SetFlashcardPage({ params }: { params: Promise<{ id: str
   useEffect(() => {
     const initializeApp = async () => {
       try {
+        // Use getUser() to properly validate the session with the server
         const {
-          data: { session },
-        } = await supabase.auth.getSession()
-        const currentUser = session?.user ?? null
+          data: { user: currentUser },
+        } = await supabase.auth.getUser()
         setUser(currentUser)
 
         // Load question set

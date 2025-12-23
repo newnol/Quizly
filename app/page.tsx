@@ -55,47 +55,72 @@ export default function Home() {
   const supabase = createClient()
 
   useEffect(() => {
-    const initializeApp = async () => {
-      try {
-        const {
-          data: { session },
-        } = await supabase.auth.getSession()
-        const currentUser = session?.user ?? null
-        setUser(currentUser)
-
-        const loadedProgress = await loadProgress(currentUser)
-        setProgress(loadedProgress || getDefaultProgress())
-      } catch (error) {
-        console.error("Error loading progress:", error)
-        setProgress(getDefaultProgress())
-      } finally {
-        setLoading(false)
-      }
-    }
-
-    initializeApp()
+    let isMounted = true
+    let hasInitialized = false
 
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (!isMounted) return
+
       const currentUser = session?.user ?? null
       setUser(currentUser)
 
       try {
-        if (event === "SIGNED_IN" && currentUser) {
+        if (!hasInitialized) {
+          hasInitialized = true
+          const loadedProgress = await loadProgress(currentUser)
+          if (isMounted) {
+            setProgress(loadedProgress || getDefaultProgress())
+            setLoading(false)
+          }
+        } else if (event === "SIGNED_IN" && currentUser) {
           const syncedProgress = await syncLocalToSupabase(currentUser.id)
-          setProgress(syncedProgress || getDefaultProgress())
+          if (isMounted) {
+            setProgress(syncedProgress || getDefaultProgress())
+          }
         } else if (event === "SIGNED_OUT") {
           const localProgress = await loadProgress(null)
-          setProgress(localProgress || getDefaultProgress())
+          if (isMounted) {
+            setProgress(localProgress || getDefaultProgress())
+          }
         }
       } catch (error) {
         console.error("Error handling auth change:", error)
-        setProgress(getDefaultProgress())
+        if (isMounted) {
+          setProgress(getDefaultProgress())
+          if (!hasInitialized) {
+            hasInitialized = true
+            setLoading(false)
+          }
+        }
       }
     })
 
-    return () => subscription.unsubscribe()
+    // Fallback timeout in case auth doesn't initialize
+    const fallbackTimeout = setTimeout(async () => {
+      if (isMounted && !hasInitialized) {
+        hasInitialized = true
+        try {
+          const loadedProgress = await loadProgress(null)
+          if (isMounted) {
+            setProgress(loadedProgress || getDefaultProgress())
+            setLoading(false)
+          }
+        } catch {
+          if (isMounted) {
+            setProgress(getDefaultProgress())
+            setLoading(false)
+          }
+        }
+      }
+    }, 5000)
+
+    return () => {
+      isMounted = false
+      clearTimeout(fallbackTimeout)
+      subscription.unsubscribe()
+    }
   }, [supabase.auth])
 
   const handleSetProgress = useCallback(

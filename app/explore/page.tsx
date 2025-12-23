@@ -24,10 +24,11 @@ export default function ExplorePage() {
   useEffect(() => {
     const initializeApp = async () => {
       try {
+        // Use getUser() to properly validate the session with the server
         const {
-          data: { session },
-        } = await supabase.auth.getSession()
-        setUser(session?.user ?? null)
+          data: { user },
+        } = await supabase.auth.getUser()
+        setUser(user)
 
         const sets = await getPublicQuestionSets()
         setQuestionSets(sets)
