@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, use } from "react"
+import { useState, useEffect, use, useRef } from "react"
 import { useRouter } from "next/navigation"
 import { createClient } from "@/lib/supabase/client"
 import type { User } from "@supabase/supabase-js"
@@ -47,6 +47,7 @@ export default function EditSetPage({ params }: { params: Promise<{ id: string }
   const [editingIndex, setEditingIndex] = useState<number | null>(null)
   const [showNewQuestion, setShowNewQuestion] = useState(false)
   const [errors, setErrors] = useState<Record<string, string>>({})
+  const newQuestionRef = useRef<HTMLDivElement>(null)
 
   const supabase = createClient()
 
@@ -104,6 +105,13 @@ export default function EditSetPage({ params }: { params: Promise<{ id: string }
 
     initializeApp()
   }, [supabase.auth, router, id])
+
+  // Scroll to new question form when it opens
+  useEffect(() => {
+    if (showNewQuestion && newQuestionRef.current) {
+      newQuestionRef.current.scrollIntoView({ behavior: "smooth", block: "start" })
+    }
+  }, [showNewQuestion])
 
   const validate = () => {
     const newErrors: Record<string, string> = {}
@@ -360,6 +368,18 @@ export default function EditSetPage({ params }: { params: Promise<{ id: string }
           <p className="text-sm text-destructive">{errors.questions}</p>
         )}
 
+        {/* New question form - shown at top */}
+        {showNewQuestion && (
+          <div ref={newQuestionRef}>
+            <QuestionEditor
+              index={questions.length}
+              onSave={handleAddQuestion}
+              onCancel={() => setShowNewQuestion(false)}
+              isNew
+            />
+          </div>
+        )}
+
         {/* Question list */}
         <div className="space-y-3">
           {questions.map((q, index) =>
@@ -383,16 +403,6 @@ export default function EditSetPage({ params }: { params: Promise<{ id: string }
             )
           )}
         </div>
-
-        {/* New question form */}
-        {showNewQuestion && (
-          <QuestionEditor
-            index={questions.length}
-            onSave={handleAddQuestion}
-            onCancel={() => setShowNewQuestion(false)}
-            isNew
-          />
-        )}
 
         {/* Add question button at bottom */}
         {!showNewQuestion && questions.length > 0 && (
