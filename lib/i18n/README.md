@@ -70,3 +70,4 @@ return <h1>{t.mySection.title}</h1>
 
 The `LanguageToggle` component is already added to the main page header. Users can switch between English and Vietnamese from the dropdown menu.
 
+

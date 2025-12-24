@@ -14,6 +14,7 @@ import {
   saveProgress,
   getDefaultProgress,
 } from "@/lib/storage"
+import { useAutoSave } from "@/lib/hooks/use-auto-save"
 
 export default function SetHistoryPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params)
@@ -76,6 +77,13 @@ export default function SetHistoryPage({ params }: { params: Promise<{ id: strin
     },
     [user]
   )
+
+  // Auto-save when tab is hidden or app loses focus
+  useAutoSave({
+    onSave: useCallback(async () => {
+      await saveProgress(user, progress)
+    }, [user, progress]),
+  })
 
   const handleReviewCards = (questionIds: string[]) => {
     setReviewQuestionIds(questionIds)

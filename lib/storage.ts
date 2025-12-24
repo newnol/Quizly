@@ -1,6 +1,7 @@
 import { type CardProgress, getInitialProgress } from "./spaced-repetition"
 import { createClient } from "./supabase/client"
 import type { User } from "@supabase/supabase-js"
+import * as IndexedDBStorage from "./indexeddb-storage"
 
 export interface StudySession {
   date: Date
@@ -33,16 +34,31 @@ export function getDefaultProgress(): UserProgress {
   }
 }
 
-export function loadProgressFromLocal(): UserProgress {
+export async function loadProgressFromLocal(): Promise<UserProgress> {
   if (typeof window === "undefined") return getDefaultProgress()
 
   try {
-    const saved = localStorage.getItem(STORAGE_KEY)
-    if (!saved) return getDefaultProgress()
+    // Try IndexedDB first (more reliable on mobile)
+    const saved = await IndexedDBStorage.getItem<UserProgress>(STORAGE_KEY)
+    if (saved) {
+      return parseProgress(saved as Record<string, unknown>)
+    }
 
-    const parsed = JSON.parse(saved)
-    return parseProgress(parsed)
-  } catch {
+    // Fallback: Try localStorage and migrate to IndexedDB
+    const localStorageData = localStorage.getItem(STORAGE_KEY)
+    if (localStorageData) {
+      const parsed = JSON.parse(localStorageData)
+      const progress = parseProgress(parsed)
+      // Migrate to IndexedDB
+      await IndexedDBStorage.setItem(STORAGE_KEY, progress)
+      // Clear localStorage to save space
+      localStorage.removeItem(STORAGE_KEY)
+      return progress
+    }
+
+    return getDefaultProgress()
+  } catch (error) {
+    console.error("Error loading progress:", error)
     return getDefaultProgress()
   }
 }
@@ -98,9 +114,23 @@ export async function loadProgressFromSupabase(userId: string): Promise<UserProg
   }
 }
 
-export function saveProgressToLocal(progress: UserProgress): void {
+export async function saveProgressToLocal(progress: UserProgress): Promise<void> {
   if (typeof window === "undefined") return
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(progress))
+  
+  try {
+    // Save to IndexedDB (more reliable on mobile)
+    await IndexedDBStorage.setItem(STORAGE_KEY, progress)
+    
+    // Also save to localStorage as backup
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(progress))
+    } catch (e) {
+      // localStorage might be full, but IndexedDB should work
+      console.warn("localStorage save failed, using IndexedDB only:", e)
+    }
+  } catch (error) {
+    console.error("Error saving progress:", error)
+  }
 }
 
 export async function saveProgressToSupabase(userId: string, progress: UserProgress): Promise<void> {
@@ -146,7 +176,7 @@ export async function saveProgress(user: User | null, progress: UserProgress): P
 }
 
 export async function syncLocalToSupabase(userId: string): Promise<UserProgress> {
-  const localProgress = loadProgressFromLocal()
+  const localProgress = await loadProgressFromLocal()
   const supabaseProgress = await loadProgressFromSupabase(userId)
 
   // Merge progress - prefer the one with more data

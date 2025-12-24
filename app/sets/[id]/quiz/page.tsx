@@ -12,6 +12,7 @@ import {
   saveProgress,
   getDefaultProgress,
 } from "@/lib/storage"
+import { useAutoSave } from "@/lib/hooks/use-auto-save"
 
 export default function SetQuizPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params)
@@ -68,6 +69,13 @@ export default function SetQuizPage({ params }: { params: Promise<{ id: string }
     },
     [user]
   )
+
+  // Auto-save when tab is hidden or app loses focus
+  useAutoSave({
+    onSave: useCallback(async () => {
+      await saveProgress(user, progress)
+    }, [user, progress]),
+  })
 
   if (loading) {
     return (

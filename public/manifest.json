@@ -1,0 +1,59 @@
+{
+  "name": "Quizly - Quiz & Flashcard App",
+  "short_name": "Quizly",
+  "description": "Học tập thông minh với quiz và flashcard, sử dụng thuật toán lặp lại ngắt quãng",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#6366f1",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "/icon-light-32x32.png",
+      "sizes": "32x32",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icon-dark-32x32.png",
+      "sizes": "32x32",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/apple-icon.png",
+      "sizes": "180x180",
+      "type": "image/png",
+      "purpose": "apple-touch-icon"
+    },
+    {
+      "src": "/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["education", "productivity"],
+  "prefer_related_applications": false,
+  "scope": "/",
+  "lang": "vi-VN",
+  "dir": "ltr",
+  "screenshots": [],
+  "shortcuts": [
+    {
+      "name": "Bộ câu hỏi của tôi",
+      "short_name": "Câu hỏi",
+      "description": "Xem các bộ câu hỏi đã lưu",
+      "url": "/my-sets",
+      "icons": []
+    },
+    {
+      "name": "Khám phá",
+      "short_name": "Khám phá",
+      "description": "Tìm kiếm bộ câu hỏi mới",
+      "url": "/explore",
+      "icons": []
+    }
+  ]
+}
+
