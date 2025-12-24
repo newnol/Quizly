@@ -1,0 +1,58 @@
+name: Auto Release (Release Please)
+
+# Workflow này tự động tạo Pull Request để tạo release
+# Khi merge PR đó, sẽ tự động tạo release với changelog
+
+on:
+  push:
+    branches:
+      - main  # Chạy khi push lên branch main
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  release-please:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Create Release PR or Release
+        uses: google-github-actions/release-please-action@v4
+        id: release
+        with:
+          release-type: node
+          package-name: quizly
+          # Tự động bump version dựa trên commit messages:
+          # - fix: patch version (1.0.0 -> 1.0.1)
+          # - feat: minor version (1.0.0 -> 1.1.0)
+          # - feat!: hoặc BREAKING CHANGE: major version (1.0.0 -> 2.0.0)
+          
+      - name: Checkout code
+        if: ${{ steps.release.outputs.release_created }}
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        if: ${{ steps.release.outputs.release_created }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        if: ${{ steps.release.outputs.release_created }}
+        run: npm ci
+
+      - name: Build project
+        if: ${{ steps.release.outputs.release_created }}
+        run: npm run build
+
+      - name: Upload Release Artifacts
+        if: ${{ steps.release.outputs.release_created }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release upload ${{ steps.release.outputs.tag_name }} \
+            .next/BUILD_ID \
+            package.json \
+            --clobber
+
