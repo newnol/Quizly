@@ -14,6 +14,7 @@ import { SearchQuestions } from "@/components/search-questions"
 import { Settings } from "@/components/settings"
 import { AuthForm } from "@/components/auth-form"
 import { UserMenu } from "@/components/user-menu"
+import { LanguageToggle } from "@/components/language-toggle"
 import { ReviewHistory } from "@/components/review-history"
 import { AIAssistant } from "@/components/ai-assistant"
 import {
@@ -250,7 +251,10 @@ export default function Home() {
           <GraduationCap className="h-8 w-8 text-primary" />
           <h1 className="text-2xl sm:text-3xl font-bold">Quizly</h1>
         </div>
-        <UserMenu user={user} onLogin={() => setCurrentView("auth")} onLogout={() => {}} />
+        <div className="flex items-center gap-2">
+          <LanguageToggle />
+          <UserMenu user={user} onLogin={() => setCurrentView("auth")} onLogout={() => {}} />
+        </div>
       </div>
 
       <p className="text-muted-foreground text-center -mt-4">Ôn tập hiệu quả với Spaced Repetition</p>

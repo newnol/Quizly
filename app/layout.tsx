@@ -2,14 +2,16 @@ import type React from "react"
 import type { Metadata, Viewport } from "next"
 import { Geist, Geist_Mono } from "next/font/google"
 import { Analytics } from "@vercel/analytics/next"
+import { Footer } from "@/components/footer"
+import { LanguageProvider } from "@/lib/i18n/language-context"
 import "./globals.css"
 
 const _geist = Geist({ subsets: ["latin"] })
 const _geistMono = Geist_Mono({ subsets: ["latin"] })
 
 export const metadata: Metadata = {
-  title: "Mạng Máy Tính - Ôn tập Trắc nghiệm",
-  description: "Ứng dụng ôn tập trắc nghiệm Mạng Máy Tính với Spaced Repetition và Active Recall",
+  title: "Quizly - Smart Quiz & Flashcard Learning",
+  description: "Create, share and study with AI-powered quizzes. Features spaced repetition, flashcards, and smart learning algorithms.",
   generator: "v0.app",
   icons: {
     icon: [
@@ -48,8 +50,13 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="vi">
-      <body className={`font-sans antialiased`}>
-        {children}
+      <body className={`font-sans antialiased min-h-screen flex flex-col`}>
+        <LanguageProvider>
+          <div className="flex-1">
+            {children}
+          </div>
+          <Footer />
+        </LanguageProvider>
         <Analytics />
       </body>
     </html>
