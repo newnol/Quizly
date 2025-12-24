@@ -69,7 +69,15 @@ export async function loadProgressFromSupabase(userId: string): Promise<UserProg
   try {
     const supabase = createClient()
 
-    const { data, error } = await supabase.from("user_progress").select("*").eq("user_id", userId).single()
+    // Wrap in Promise.race with timeout to prevent hanging
+    const result = await Promise.race([
+      supabase.from("user_progress").select("*").eq("user_id", userId).single(),
+      new Promise<{ data: null; error: { message: string } }>((resolve) => {
+        setTimeout(() => resolve({ data: null, error: { message: "Timeout" } }), 3000)
+      }),
+    ])
+
+    const { data, error } = result
 
     if (error || !data) {
       return getDefaultProgress()

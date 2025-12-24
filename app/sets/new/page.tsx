@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { useRouter } from "next/navigation"
 import { createClient } from "@/lib/supabase/client"
 import type { User } from "@supabase/supabase-js"
@@ -17,8 +17,9 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { QuestionEditor, QuestionCard, type QuestionFormData } from "@/components/question-editor"
+import { ImportQuestionsDialog } from "@/components/import-questions-dialog"
 import { createQuestionSet, createManyQuestions } from "@/lib/question-sets"
-import { ArrowLeft, Globe, Link2, Lock, Plus, Save } from "lucide-react"
+import { ArrowLeft, Globe, Link2, Lock, Plus, Save, Upload } from "lucide-react"
 import Link from "next/link"
 
 export default function NewSetPage() {
@@ -35,16 +36,17 @@ export default function NewSetPage() {
   const [editingIndex, setEditingIndex] = useState<number | null>(null)
   const [showNewQuestion, setShowNewQuestion] = useState(false)
   const [errors, setErrors] = useState<Record<string, string>>({})
+  const newQuestionRef = useRef<HTMLDivElement>(null)
 
   const supabase = createClient()
 
   useEffect(() => {
     const initializeApp = async () => {
       try {
+        // Use getUser() to properly validate the session with the server
         const {
-          data: { session },
-        } = await supabase.auth.getSession()
-        const currentUser = session?.user ?? null
+          data: { user: currentUser },
+        } = await supabase.auth.getUser()
         setUser(currentUser)
 
         if (!currentUser) {
@@ -60,6 +62,13 @@ export default function NewSetPage() {
 
     initializeApp()
   }, [supabase.auth, router])
+
+  // Scroll to new question form when it opens
+  useEffect(() => {
+    if (showNewQuestion && newQuestionRef.current) {
+      newQuestionRef.current.scrollIntoView({ behavior: "smooth", block: "start" })
+    }
+  }, [showNewQuestion])
 
   const validate = () => {
     const newErrors: Record<string, string> = {}
@@ -134,6 +143,10 @@ export default function NewSetPage() {
         setEditingIndex(null)
       }
     }
+  }
+
+  const handleImportQuestions = (importedQuestions: QuestionFormData[]) => {
+    setQuestions([...questions, ...importedQuestions])
   }
 
   if (loading) {
@@ -233,16 +246,36 @@ export default function NewSetPage() {
             <h2 className="text-xl font-semibold">Câu hỏi</h2>
             <p className="text-sm text-muted-foreground">{questions.length} câu hỏi</p>
           </div>
-          {!showNewQuestion && (
-            <Button onClick={() => setShowNewQuestion(true)}>
-              <Plus className="h-4 w-4 mr-2" />
-              Thêm câu hỏi
-            </Button>
-          )}
+          <div className="flex items-center gap-2">
+            <ImportQuestionsDialog onImport={handleImportQuestions}>
+              <Button variant="outline">
+                <Upload className="h-4 w-4 mr-2" />
+                Import
+              </Button>
+            </ImportQuestionsDialog>
+            {!showNewQuestion && (
+              <Button onClick={() => setShowNewQuestion(true)}>
+                <Plus className="h-4 w-4 mr-2" />
+                Thêm câu hỏi
+              </Button>
+            )}
+          </div>
         </div>
 
         {errors.questions && (
           <p className="text-sm text-destructive">{errors.questions}</p>
+        )}
+
+        {/* New question form - shown at top */}
+        {showNewQuestion && (
+          <div ref={newQuestionRef}>
+            <QuestionEditor
+              index={questions.length}
+              onSave={handleAddQuestion}
+              onCancel={() => setShowNewQuestion(false)}
+              isNew
+            />
+          </div>
         )}
 
         {/* Question list */}
@@ -268,16 +301,6 @@ export default function NewSetPage() {
             )
           )}
         </div>
-
-        {/* New question form */}
-        {showNewQuestion && (
-          <QuestionEditor
-            index={questions.length}
-            onSave={handleAddQuestion}
-            onCancel={() => setShowNewQuestion(false)}
-            isNew
-          />
-        )}
 
         {/* Add question button at bottom */}
         {!showNewQuestion && questions.length > 0 && (

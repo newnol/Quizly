@@ -4,8 +4,10 @@ import { useState, useEffect, useCallback, use } from "react"
 import { useRouter } from "next/navigation"
 import { createClient } from "@/lib/supabase/client"
 import type { User } from "@supabase/supabase-js"
+import { SetReviewHistory } from "@/components/set-review-history"
 import { FlashcardMode } from "@/components/flashcard-mode"
-import { getQuestionSetById, type QuestionSet } from "@/lib/question-sets"
+import { getQuestionSetById, getQuestionsBySetId, type QuestionSet } from "@/lib/question-sets"
+import { type Question, dbQuestionToAppQuestion } from "@/lib/questions"
 import {
   type UserProgress,
   loadProgress,
@@ -13,13 +15,15 @@ import {
   getDefaultProgress,
 } from "@/lib/storage"
 
-export default function SetFlashcardPage({ params }: { params: Promise<{ id: string }> }) {
+export default function SetHistoryPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params)
   const router = useRouter()
   const [user, setUser] = useState<User | null>(null)
   const [progress, setProgress] = useState<UserProgress>(getDefaultProgress())
   const [questionSet, setQuestionSet] = useState<QuestionSet | null>(null)
+  const [questions, setQuestions] = useState<Question[]>([])
   const [loading, setLoading] = useState(true)
+  const [reviewQuestionIds, setReviewQuestionIds] = useState<string[] | null>(null)
 
   const supabase = createClient()
 
@@ -39,6 +43,10 @@ export default function SetFlashcardPage({ params }: { params: Promise<{ id: str
           return
         }
         setQuestionSet(set)
+
+        // Load questions
+        const dbQuestions = await getQuestionsBySetId(id)
+        setQuestions(dbQuestions.map(dbQuestionToAppQuestion))
 
         // Load progress
         const loadedProgress = await loadProgress(currentUser)
@@ -69,6 +77,10 @@ export default function SetFlashcardPage({ params }: { params: Promise<{ id: str
     [user]
   )
 
+  const handleReviewCards = (questionIds: string[]) => {
+    setReviewQuestionIds(questionIds)
+  }
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -81,13 +93,29 @@ export default function SetFlashcardPage({ params }: { params: Promise<{ id: str
     return null
   }
 
+  // Show flashcard mode if reviewing specific questions
+  if (reviewQuestionIds) {
+    return (
+      <main className="container max-w-4xl mx-auto p-4 py-8">
+        <FlashcardMode
+          progress={progress}
+          setProgress={handleSetProgress}
+          onBack={() => setReviewQuestionIds(null)}
+          specificQuestionIds={reviewQuestionIds}
+          questionSetId={id}
+        />
+      </main>
+    )
+  }
+
   return (
     <main className="container max-w-4xl mx-auto p-4 py-8">
-      <FlashcardMode
+      <SetReviewHistory
         progress={progress}
-        setProgress={handleSetProgress}
+        questions={questions}
+        questionSetTitle={questionSet.title}
         onBack={() => router.push(`/sets/${id}`)}
-        questionSetId={id}
+        onReviewCards={handleReviewCards}
       />
     </main>
   )

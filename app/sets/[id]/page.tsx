@@ -21,6 +21,7 @@ import {
   Brain,
   Copy,
   Globe,
+  History,
   Layers,
   Link2,
   Lock,
@@ -45,10 +46,10 @@ export default function SetDetailPage({ params }: { params: Promise<{ id: string
   useEffect(() => {
     const initializeApp = async () => {
       try {
+        // Use getUser() to properly validate the session with the server
         const {
-          data: { session },
-        } = await supabase.auth.getSession()
-        const currentUser = session?.user ?? null
+          data: { user: currentUser },
+        } = await supabase.auth.getUser()
         setUser(currentUser)
 
         // Load question set
@@ -209,7 +210,7 @@ export default function SetDetailPage({ params }: { params: Promise<{ id: string
 
       {/* Action Cards */}
       {questions.length > 0 ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <Card
             className="cursor-pointer hover:border-primary transition-colors"
             onClick={() => router.push(`/sets/${id}/quiz`)}
@@ -244,6 +245,25 @@ export default function SetDetailPage({ params }: { params: Promise<{ id: string
               <Button variant="outline" className="w-full bg-transparent">
                 <Layers className="h-4 w-4 mr-2" />
                 Xem Flashcard
+              </Button>
+            </CardContent>
+          </Card>
+
+          <Card
+            className="cursor-pointer hover:border-primary transition-colors"
+            onClick={() => router.push(`/sets/${id}/history`)}
+          >
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <History className="h-5 w-5 text-blue-500" />
+                Lịch sử
+              </CardTitle>
+              <CardDescription>Xem tiến độ và câu yếu</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Button variant="outline" className="w-full bg-transparent">
+                <History className="h-4 w-4 mr-2" />
+                Xem lịch sử
               </Button>
             </CardContent>
           </Card>
