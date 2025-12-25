@@ -8,24 +8,15 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { StatsCard } from "@/components/stats-card"
 import { TopicProgress } from "@/components/topic-progress"
-import { QuizMode } from "@/components/quiz-mode"
-import { FlashcardMode } from "@/components/flashcard-mode"
-import { SearchQuestions } from "@/components/search-questions"
-import { Settings } from "@/components/settings"
-import { AuthForm } from "@/components/auth-form"
 import { UserMenu } from "@/components/user-menu"
 import { LanguageToggle } from "@/components/language-toggle"
-import { ReviewHistory } from "@/components/review-history"
-import { AIAssistant } from "@/components/ai-assistant"
 import {
   type UserProgress,
   loadProgress,
-  saveProgress,
   getDueCards,
-  syncLocalToSupabase,
   getDefaultProgress,
 } from "@/lib/storage"
-import { questions, type Question } from "@/lib/questions"
+import { questions } from "@/lib/questions"
 import { 
   BookOpen, 
   Layers, 
@@ -42,122 +33,81 @@ import {
 } from "lucide-react"
 import Link from "next/link"
 
-type View = "home" | "quiz" | "flashcard" | "search" | "settings" | "auth" | "review" | "ai"
-
 export default function Home() {
   const router = useRouter()
   const [user, setUser] = useState<User | null>(null)
   const [progress, setProgress] = useState<UserProgress>(getDefaultProgress())
-  const [currentView, setCurrentView] = useState<View>("home")
   const [loading, setLoading] = useState(true)
-  const [reviewQuestionIds, setReviewQuestionIds] = useState<string[] | null>(null)
-  const [aiInitialQuestion, setAiInitialQuestion] = useState<Question | null>(null)
+  const [mounted, setMounted] = useState(false)
 
   const supabase = createClient()
 
+  const initApp = useCallback(async (currentUser: User | null) => {
+    try {
+      const loadedProgress = await loadProgress(currentUser)
+      setProgress(loadedProgress || getDefaultProgress())
+    } catch (error) {
+      console.error("App initialization error:", error)
+    } finally {
+      setLoading(false)
+    }
+  }, [])
+
   useEffect(() => {
+    setMounted(true)
     let isMounted = true
-    let hasInitialized = false
 
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange(async (event, session) => {
-      if (!isMounted) return
+    // Safety timer to force end loading screen after 5 seconds
+    const safetyTimer = setTimeout(() => {
+      if (isMounted && loading) {
+        setLoading(false)
+      }
+    }, 5000)
 
-      const currentUser = session?.user ?? null
-      setUser(currentUser)
+    // Initial check
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (isMounted) {
+        const currentUser = session?.user ?? null
+        setUser(currentUser)
+        initApp(currentUser)
+      }
+    })
 
-      try {
-        if (!hasInitialized) {
-          hasInitialized = true
-          const loadedProgress = await loadProgress(currentUser)
-          if (isMounted) {
-            setProgress(loadedProgress || getDefaultProgress())
-            setLoading(false)
-          }
-        } else if (event === "SIGNED_IN" && currentUser) {
-          const syncedProgress = await syncLocalToSupabase(currentUser.id)
-          if (isMounted) {
-            setProgress(syncedProgress || getDefaultProgress())
-          }
-        } else if (event === "SIGNED_OUT") {
-          const localProgress = await loadProgress(null)
-          if (isMounted) {
-            setProgress(localProgress || getDefaultProgress())
-          }
-        }
-      } catch (error) {
-        console.error("Error handling auth change:", error)
-        if (isMounted) {
-          setProgress(getDefaultProgress())
-          if (!hasInitialized) {
-            hasInitialized = true
-            setLoading(false)
-          }
+    // Listen for changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (isMounted) {
+        const currentUser = session?.user ?? null
+        setUser(currentUser)
+        if (_event === "SIGNED_IN" || _event === "SIGNED_OUT") {
+          initApp(currentUser)
         }
       }
     })
 
-    // Fallback timeout in case auth doesn't initialize
-    const fallbackTimeout = setTimeout(async () => {
-      if (isMounted && !hasInitialized) {
-        hasInitialized = true
-        try {
-          const loadedProgress = await loadProgress(null)
-          if (isMounted) {
-            setProgress(loadedProgress || getDefaultProgress())
-            setLoading(false)
-          }
-        } catch {
-          if (isMounted) {
-            setProgress(getDefaultProgress())
-            setLoading(false)
-          }
-        }
-      }
-    }, 5000)
-
     return () => {
       isMounted = false
-      clearTimeout(fallbackTimeout)
       subscription.unsubscribe()
+      clearTimeout(safetyTimer)
     }
-  }, [supabase.auth])
+  }, [initApp])
 
-  const handleSetProgress = useCallback(
-    async (newProgress: UserProgress) => {
-      setProgress(newProgress)
-      await saveProgress(user, newProgress)
-    },
-    [user],
-  )
-
-  const handleReviewCards = (questionIds: string[]) => {
-    setReviewQuestionIds(questionIds)
-    setCurrentView("flashcard")
+  // Tránh lỗi Hydration: Render một bộ khung đơn giản trên Server
+  if (!mounted) {
+    return <div className="min-h-screen flex items-center justify-center" />
   }
-
-  const handleAskAI = useCallback((question: Question) => {
-    setAiInitialQuestion(question)
-    setCurrentView("ai")
-  }, [])
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-pulse text-muted-foreground">Đang tải...</div>
-      </div>
-    )
-  }
-
-  if (currentView === "auth") {
-    return <AuthForm onBack={() => setCurrentView("home")} onSuccess={() => setCurrentView("home")} />
-  }
-
-  if (!progress) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-pulse text-muted-foreground">Đang tải...</div>
+      <div className="min-h-screen flex flex-col items-center justify-center p-4">
+        <div className="animate-pulse text-muted-foreground mb-4">Đang tải dữ liệu...</div>
+        <Button 
+          variant="outline" 
+          size="sm" 
+          onClick={() => setLoading(false)}
+          className="text-xs opacity-50 hover:opacity-100"
+        >
+          Bỏ qua nếu đợi quá lâu
+        </Button>
       </div>
     )
   }
@@ -167,82 +117,7 @@ export default function Home() {
     questions.map((q) => q.id),
   ).length
 
-  const reviewedCount = Object.keys(progress.cardProgress).filter(
-    (id) => progress.cardProgress[id]?.lastReviewDate,
-  ).length
-
-  if (currentView === "quiz") {
-    return (
-      <main className="container max-w-4xl mx-auto p-4 py-8">
-        <QuizMode
-          progress={progress}
-          setProgress={handleSetProgress}
-          onBack={() => setCurrentView("home")}
-          onAskAI={handleAskAI}
-        />
-      </main>
-    )
-  }
-
-  if (currentView === "flashcard") {
-    return (
-      <main className="container max-w-4xl mx-auto p-4 py-8">
-        <FlashcardMode
-          progress={progress}
-          setProgress={handleSetProgress}
-          onBack={() => {
-            setCurrentView("home")
-            setReviewQuestionIds(null)
-          }}
-          specificQuestionIds={reviewQuestionIds}
-          onAskAI={handleAskAI}
-        />
-      </main>
-    )
-  }
-
-  if (currentView === "search") {
-    return (
-      <main className="container max-w-4xl mx-auto p-4 py-8">
-        <SearchQuestions progress={progress} onBack={() => setCurrentView("home")} onAskAI={handleAskAI} />
-      </main>
-    )
-  }
-
-  if (currentView === "settings") {
-    return (
-      <main className="container max-w-4xl mx-auto p-4 py-8">
-        <Settings
-          progress={progress}
-          setProgress={handleSetProgress}
-          onBack={() => setCurrentView("home")}
-          user={user}
-        />
-      </main>
-    )
-  }
-
-  if (currentView === "review") {
-    return (
-      <main className="container max-w-4xl mx-auto p-4 py-8">
-        <ReviewHistory progress={progress} onBack={() => setCurrentView("home")} onReviewCards={handleReviewCards} />
-      </main>
-    )
-  }
-
-  if (currentView === "ai") {
-    return (
-      <main className="container max-w-4xl mx-auto p-4 py-8">
-        <AIAssistant
-          onBack={() => {
-            setCurrentView("home")
-            setAiInitialQuestion(null)
-          }}
-          initialQuestion={aiInitialQuestion}
-        />
-      </main>
-    )
-  }
+  const reviewedCount = Object.keys(progress.cardProgress).length
 
   return (
     <main className="container max-w-4xl mx-auto p-4 py-8 space-y-8">
@@ -253,7 +128,11 @@ export default function Home() {
         </div>
         <div className="flex items-center gap-2">
           <LanguageToggle />
-          <UserMenu user={user} onLogin={() => setCurrentView("auth")} onLogout={() => {}} />
+          <UserMenu 
+            user={user} 
+            onLogin={() => router.push("/auth")} 
+            onLogout={() => {}} 
+          />
         </div>
       </div>
 
@@ -265,25 +144,25 @@ export default function Home() {
           className="cursor-pointer hover:border-primary transition-colors"
           onClick={() => router.push("/explore")}
         >
-          <CardHeader className="pb-3">
-            <CardTitle className="flex items-center gap-2 text-lg">
+          <CardHeader className="pb-3 text-center sm:text-left">
+            <CardTitle className="flex items-center justify-center sm:justify-start gap-2 text-lg">
               <Globe className="h-5 w-5 text-blue-500" />
               Khám phá
             </CardTitle>
-            <CardDescription>Tìm bộ câu hỏi từ cộng đồng</CardDescription>
+            <CardDescription className="hidden sm:block">Tìm bộ câu hỏi từ cộng đồng</CardDescription>
           </CardHeader>
         </Card>
 
         <Card 
           className="cursor-pointer hover:border-primary transition-colors"
-          onClick={() => user ? router.push("/my-sets") : setCurrentView("auth")}
+          onClick={() => user ? router.push("/my-sets") : router.push("/auth?returnTo=/my-sets")}
         >
-          <CardHeader className="pb-3">
-            <CardTitle className="flex items-center gap-2 text-lg">
+          <CardHeader className="pb-3 text-center sm:text-left">
+            <CardTitle className="flex items-center justify-center sm:justify-start gap-2 text-lg">
               <FolderOpen className="h-5 w-5 text-orange-500" />
               Bộ của tôi
             </CardTitle>
-            <CardDescription>Quản lý bộ câu hỏi của bạn</CardDescription>
+            <CardDescription className="hidden sm:block">Quản lý bộ câu hỏi của bạn</CardDescription>
           </CardHeader>
         </Card>
       </div>
@@ -292,7 +171,7 @@ export default function Home() {
       {user && (
         <Button 
           variant="outline" 
-          className="w-full bg-transparent" 
+          className="w-full bg-transparent border-dashed" 
           asChild
         >
           <Link href="/sets/new">
@@ -306,7 +185,7 @@ export default function Home() {
       <div className="space-y-4">
         <div className="flex items-center justify-between">
           <h2 className="text-xl font-semibold">Mạng Máy Tính</h2>
-          <span className="text-sm text-muted-foreground">100 câu hỏi</span>
+          <span className="text-sm text-muted-foreground">{questions.length} câu hỏi</span>
         </div>
 
         {/* Stats */}
@@ -314,7 +193,7 @@ export default function Home() {
 
         {/* Quick Actions */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <Card className="cursor-pointer hover:border-primary transition-colors" onClick={() => setCurrentView("quiz")}>
+          <Card className="cursor-pointer hover:border-primary transition-colors" onClick={() => router.push("/quiz")}>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Zap className="h-5 w-5 text-yellow-500" />
@@ -332,7 +211,7 @@ export default function Home() {
 
           <Card
             className="cursor-pointer hover:border-primary transition-colors"
-            onClick={() => setCurrentView("flashcard")}
+            onClick={() => router.push("/flashcard")}
           >
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
@@ -356,39 +235,46 @@ export default function Home() {
         </div>
 
         {/* Secondary Actions */}
-        <div className="grid grid-cols-4 gap-4">
+        <div className="grid grid-cols-4 gap-2 sm:gap-4">
           <Button
             variant="outline"
-            className="h-auto py-4 flex flex-col gap-1 bg-transparent"
-            onClick={() => setCurrentView("ai")}
+            className="h-auto py-4 flex flex-col gap-1 bg-transparent text-[10px] sm:text-sm"
+            asChild
           >
-            <Sparkles className="h-5 w-5 text-primary" />
-            <span>Hỏi AI</span>
+            <Link href="/ai">
+              <Sparkles className="h-5 w-5 text-primary" />
+              <span>Hỏi AI</span>
+            </Link>
           </Button>
           <Button
             variant="outline"
-            className="h-auto py-4 flex flex-col gap-1 bg-transparent"
-            onClick={() => setCurrentView("review")}
+            className="h-auto py-4 flex flex-col gap-1 bg-transparent text-[10px] sm:text-sm"
+            asChild
           >
-            <History className="h-5 w-5" />
-            <span>Lịch sử</span>
-            {reviewedCount > 0 && <span className="text-xs text-muted-foreground">{reviewedCount} thẻ</span>}
+            <Link href="/review">
+              <History className="h-5 w-5" />
+              <span>Lịch sử</span>
+            </Link>
           </Button>
           <Button
             variant="outline"
-            className="h-auto py-4 flex flex-col gap-1 bg-transparent"
-            onClick={() => setCurrentView("search")}
+            className="h-auto py-4 flex flex-col gap-1 bg-transparent text-[10px] sm:text-sm"
+            asChild
           >
-            <Search className="h-5 w-5" />
-            <span>Tìm kiếm</span>
+            <Link href="/search">
+              <Search className="h-5 w-5" />
+              <span>Tìm kiếm</span>
+            </Link>
           </Button>
           <Button
             variant="outline"
-            className="h-auto py-4 flex flex-col gap-1 bg-transparent"
-            onClick={() => setCurrentView("settings")}
+            className="h-auto py-4 flex flex-col gap-1 bg-transparent text-[10px] sm:text-sm"
+            asChild
           >
-            <SettingsIcon className="h-5 w-5" />
-            <span>Cài đặt</span>
+            <Link href="/settings">
+              <SettingsIcon className="h-5 w-5" />
+              <span>Cài đặt</span>
+            </Link>
           </Button>
         </div>
 

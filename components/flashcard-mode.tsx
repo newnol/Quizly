@@ -125,6 +125,7 @@ export function FlashcardMode({ progress, setProgress, onBack, specificQuestionI
       },
     })
 
+    // Update state and save to storage immediately
     setProgress(updatedProgress)
     setReviewed((prev) => prev + 1)
 

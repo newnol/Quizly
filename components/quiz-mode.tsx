@@ -150,6 +150,7 @@ export function QuizMode({ progress, setProgress, onBack, questionSetId }: QuizM
       wrongAnswers: newWrongAnswers,
     })
 
+    // Update state and save to storage immediately
     setProgress(updatedProgress)
 
     setSessionStats((prev) => ({

@@ -1,14 +1,15 @@
 import { NextRequest, NextResponse } from "next/server"
 import { Mistral } from "@mistralai/mistralai"
 import mammoth from "mammoth"
-
-const MISTRAL_API_KEY = process.env.MISTRAL_API_KEY
+import { env } from "@/lib/env"
 
 // DOCX MIME types
 const DOCX_MIME_TYPES = [
   "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
   "application/msword",
 ]
+
+const MAX_FILE_SIZE = 10 * 1024 * 1024 // 10MB
 
 // Check if file is DOCX
 function isDocxFile(mimeType: string, fileName: string): boolean {
@@ -34,12 +35,26 @@ function isImageFile(mimeType: string, fileName: string): boolean {
 
 export async function POST(request: NextRequest) {
   try {
+    if (!env.MISTRAL_API_KEY) {
+      return NextResponse.json(
+        { error: "MISTRAL_API_KEY is not configured" },
+        { status: 500 }
+      )
+    }
+
     const formData = await request.formData()
     const file = formData.get("file") as File | null
 
     if (!file) {
       return NextResponse.json(
         { error: "No file provided" },
+        { status: 400 }
+      )
+    }
+
+    if (file.size > MAX_FILE_SIZE) {
+      return NextResponse.json(
+        { error: "File size exceeds 10MB limit" },
         { status: 400 }
       )
     }
@@ -72,14 +87,6 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Handle PDF and Image files - use Mistral OCR
-    if (!MISTRAL_API_KEY) {
-      return NextResponse.json(
-        { error: "MISTRAL_API_KEY is not configured" },
-        { status: 500 }
-      )
-    }
-
     let documentMimeType: string
 
     if (isPdfFile(mimeType, fileName)) {
@@ -101,7 +108,7 @@ export async function POST(request: NextRequest) {
     const dataUrl = `data:${documentMimeType};base64,${base64File}`
 
     // Use Mistral OCR API
-    const client = new Mistral({ apiKey: MISTRAL_API_KEY })
+    const client = new Mistral({ apiKey: env.MISTRAL_API_KEY })
 
     const ocrResponse = await client.ocr.process({
       model: "mistral-ocr-latest",

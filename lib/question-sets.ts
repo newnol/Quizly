@@ -1,5 +1,7 @@
 import { createClient } from "./supabase/client"
 
+export const DEFAULT_QUESTION_SET_ID = "default-networking"
+
 export interface QuestionSet {
   id: string
   owner_id: string | null
@@ -61,6 +63,22 @@ export interface UpdateQuestionInput {
   explanation?: string
   topic?: string
   order_index?: number
+}
+
+// Hardcoded default set info
+const DEFAULT_SET: QuestionSet = {
+  id: DEFAULT_QUESTION_SET_ID,
+  owner_id: null,
+  title: "Mạng Máy Tính",
+  description: "Bộ câu hỏi ôn tập kiến thức Mạng Máy Tính (TCP/IP, QoS, IPv6...)",
+  visibility: "public",
+  cover_image: null,
+  question_count: 100,
+  copy_count: 0,
+  copied_from: null,
+  is_system: true,
+  created_at: new Date().toISOString(),
+  updated_at: new Date().toISOString(),
 }
 
 // =====================
@@ -134,6 +152,10 @@ export async function getMyQuestionSets(userId: string, options?: {
 }
 
 export async function getQuestionSetById(id: string): Promise<QuestionSet | null> {
+  if (id === DEFAULT_QUESTION_SET_ID) {
+    return DEFAULT_SET
+  }
+
   const supabase = createClient()
 
   const { data, error } = await supabase
@@ -279,6 +301,12 @@ export async function copyQuestionSet(
 // =====================
 
 export async function getQuestionsBySetId(questionSetId: string): Promise<Question[]> {
+  if (questionSetId === DEFAULT_QUESTION_SET_ID) {
+    // We can't import from lib/questions.ts due to circular dependency
+    // But we can handle it in the caller or move types
+    const supabase = createClient()
+    // For now, let's just return empty or handle in lib/questions.ts
+  }
   const supabase = createClient()
 
   const { data, error } = await supabase

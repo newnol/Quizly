@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from "next/server"
+import { env } from "@/lib/env"
 
-const GROQ_API_KEY = process.env.GROQ_API_KEY
+const SYSTEM_PROMPT = `You are a question parser. Given raw OCR text from exam/quiz documents, extract and structure the questions into a valid JSON object.
 
-const SYSTEM_PROMPT = `You are a question parser. Given raw OCR text from exam/quiz documents, extract and structure the questions into a valid JSON array.
-
-Each question should have:
+Structure your response as a JSON object with a "questions" key containing an array of question objects.
+Each question object must have:
 - "question": The question text (string)
 - "options": Array of answer options (strings, minimum 2)
 - "correctAnswer": Index of correct answer (number, 0-based). If not indicated, use -1
@@ -17,22 +17,11 @@ Rules:
 3. Preserve the original language (Vietnamese or English)
 4. If correct answer is marked (with *, ✓, "Đáp án:", etc.), set correctAnswer accordingly
 5. If no correct answer is marked, set correctAnswer to -1
-6. Return ONLY valid JSON array, no markdown, no explanation
-
-Example output:
-[
-  {
-    "question": "TCP sử dụng cơ chế nào để kiểm soát lưu lượng?",
-    "options": ["Flow control", "Congestion control", "Error control", "Cả A và B"],
-    "correctAnswer": 3,
-    "explanation": "TCP sử dụng cả flow control và congestion control",
-    "topic": "TCP/IP"
-  }
-]`
+6. Return ONLY valid JSON, no markdown, no explanation`
 
 export async function POST(request: NextRequest) {
   try {
-    if (!GROQ_API_KEY) {
+    if (!env.GROQ_API_KEY) {
       return NextResponse.json(
         { error: "GROQ_API_KEY is not configured" },
         { status: 500 }
@@ -53,7 +42,7 @@ export async function POST(request: NextRequest) {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "Authorization": `Bearer ${GROQ_API_KEY}`,
+        "Authorization": `Bearer ${env.GROQ_API_KEY}`,
       },
       body: JSON.stringify({
         model: "llama-3.3-70b-versatile",
